@@ -1,10 +1,10 @@
-use crate::{Fixture, FixtureSide, FixtureType};
 use chrono::prelude::*;
 use chrono_tz::GB;
+use full_time_spond_sync::{Fixture, FixtureSide, FixtureType};
 use reqwest::Error;
 use scraper::{ElementRef, Html, Selector};
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TeamId(i32);
 
 impl TeamId {
@@ -21,11 +21,19 @@ impl std::ops::Deref for TeamId {
     }
 }
 
-pub struct TeamName<'a>(pub &'a str);
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct TeamName(String);
 
-pub struct Team<'a> {
+impl TeamName {
+    pub fn new(s: &str) -> Self {
+        TeamName(s.to_string())
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct Team {
     pub id: TeamId,
-    pub name: TeamName<'a>,
+    pub name: TeamName,
 }
 
 fn parse_fixture_type(cell: &ElementRef) -> FixtureType {
@@ -63,7 +71,7 @@ fn try_parse_opposition(cell: &ElementRef, team_name: &TeamName) -> Option<Strin
         .collect::<Vec<_>>()[..]
     {
         [opposition] => {
-            if opposition.eq_ignore_ascii_case(team_name.0) {
+            if opposition.eq_ignore_ascii_case(&team_name.0) {
                 None
             } else {
                 Some(opposition.to_owned())
@@ -104,7 +112,7 @@ fn parse_fixture<'a>(row: impl Iterator<Item = ElementRef<'a>>, team_name: &Team
     }
 }
 
-pub async fn get_upcoming_fixtures(team: &Team<'_>) -> Result<Vec<Fixture>, Error> {
+pub async fn get_upcoming_fixtures(team: &Team) -> Result<Vec<Fixture>, Error> {
     let html = reqwest::get(format!(
         "https://fulltime.thefa.com/displayTeam.html?divisionseason=756007599&teamID={}",
         *team.id
