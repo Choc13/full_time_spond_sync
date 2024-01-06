@@ -5,11 +5,28 @@ use reqwest::Error;
 use scraper::{ElementRef, Html, Selector};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SeasonId(i32);
+
+impl SeasonId {
+    pub fn new(x: i32) -> Self {
+        Self(x)
+    }
+}
+
+impl std::ops::Deref for SeasonId {
+    type Target = i32;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TeamId(i32);
 
 impl TeamId {
-    pub fn new(x: i32) -> TeamId {
-        TeamId(x)
+    pub fn new(x: i32) -> Self {
+        Self(x)
     }
 }
 
@@ -112,19 +129,22 @@ fn parse_fixture<'a>(row: impl Iterator<Item = ElementRef<'a>>, team_name: &Team
     }
 }
 
-pub async fn get_upcoming_fixtures(team: &Team) -> Result<Vec<Fixture>, Error> {
-    let html = reqwest::get(format!(
-        "https://fulltime.thefa.com/displayTeam.html?divisionseason=756007599&teamID={}",
-        *team.id
-    ))
-    .await?
-    .text()
-    .await?;
+pub async fn get_upcoming_fixtures(
+    season_id: SeasonId,
+    team: &Team,
+) -> Result<Vec<Fixture>, Error> {
+    let url = format!(
+        "https://fulltime.thefa.com/displayTeam.html?divisionseason={}&teamID={}",
+        *season_id, *team.id
+    );
+    println!("Looking for new fixtures at {:?}", url);
+    let html = reqwest::get(url).await?.text().await?;
     let document = Html::parse_document(&html);
     let tables = document
         .select(&Selector::parse("div.fixtures-table table").unwrap())
         .collect::<Vec<_>>();
     let table = match tables[..] {
+        [] => return Ok(vec![]),
         [t] => t,
         _ => panic!(
             "Expected to find one fixture table, but found {}.",
