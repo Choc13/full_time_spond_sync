@@ -1,6 +1,5 @@
 use chrono::prelude::*;
 use chrono_tz::GB;
-use full_time_spond_sync::{Fixture, FixtureSide, FixtureType};
 use reqwest::Error;
 use scraper::{ElementRef, Html, Selector};
 
@@ -53,9 +52,29 @@ pub struct Team {
     pub name: TeamName,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FixtureType {
+    Cup,
+    League,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FixtureSide {
+    Home,
+    Away,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Fixture {
+    pub typ: FixtureType,
+    pub side: FixtureSide,
+    pub date_time: DateTime<Utc>,
+    pub opposition: String,
+}
+
 fn parse_fixture_type(cell: &ElementRef) -> FixtureType {
     match cell.inner_html().trim().to_lowercase().as_str() {
-        "l" => FixtureType::League,
+        "l" | "o" => FixtureType::League,
         "cup" => FixtureType::Cup,
         x => panic!("Unknown fixture type {x}."),
     }
@@ -119,8 +138,8 @@ fn parse_fixture<'a>(row: impl Iterator<Item = ElementRef<'a>>, team_name: &Team
         [typ, date_time, home_team, _, _, _, away_team, _] => {
             let (fixture_side, opposition) = parse_teams(home_team, away_team, team_name);
             Fixture {
-                fixture_type: parse_fixture_type(typ),
-                fixture_side,
+                typ: parse_fixture_type(typ),
+                side: fixture_side,
                 date_time: parse_fixture_time(date_time),
                 opposition,
             }

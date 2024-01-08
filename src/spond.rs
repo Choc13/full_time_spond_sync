@@ -1,5 +1,5 @@
-use chrono::{DateTime, Months, NaiveDate, Utc};
-use full_time_spond_sync::{Fixture, FixtureSide, FixtureType};
+use chrono::{DateTime, NaiveDate, Utc};
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize)]
@@ -30,7 +30,7 @@ pub async fn login(credentials: &UserCredentials) -> reqwest::Result<UserSession
 }
 
 #[derive(Debug)]
-enum Order {
+pub enum Order {
     Asc,
     Desc,
 }
@@ -42,6 +42,163 @@ impl From<Order> for String {
             Order::Desc => "desc",
         }
         .to_owned()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct UserId(String);
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct UserProfile {
+    #[serde(rename = "id")]
+    pub id: UserId,
+    #[serde(rename = "contactMethod")]
+    pub contact_method: String,
+    #[serde(rename = "firstName")]
+    pub first_name: String,
+    #[serde(rename = "lastName")]
+    pub last_name: String,
+    #[serde(rename = "imageUrl")]
+    pub image_url: Option<String>,
+    #[serde(rename = "email")]
+    pub email: Option<String>,
+    #[serde(rename = "phoneNumber")]
+    pub phone_number: Option<String>,
+    #[serde(rename = "unableToReach")]
+    pub unable_to_reach: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct GuardianId(String);
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct Guardian {
+    #[serde(rename = "id")]
+    pub id: GuardianId,
+    #[serde(rename = "profile")]
+    pub profile: Option<UserProfile>,
+    #[serde(rename = "firstName")]
+    pub first_name: String,
+    #[serde(rename = "lastName")]
+    pub last_name: String,
+    #[serde(rename = "email")]
+    pub email: Option<String>,
+    #[serde(rename = "phoneNumber")]
+    pub phone_number: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct RoleId(String);
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Permission {
+    Members,
+    Admins,
+    Settings,
+    Events,
+    Posts,
+    Polls,
+    Payments,
+    Chat,
+    Files,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct Role {
+    #[serde(rename = "id")]
+    pub id: RoleId,
+    #[serde(rename = "name")]
+    pub name: String,
+    #[serde(rename = "permissions")]
+    pub permissions: Vec<Permission>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct GroupMemberId(String);
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct GroupMember {
+    #[serde(rename = "id")]
+    pub id: GroupMemberId,
+    #[serde(rename = "profile")]
+    pub profile: Option<UserProfile>,
+    #[serde(rename = "firstName")]
+    pub first_name: String,
+    #[serde(rename = "lastName")]
+    pub last_name: String,
+    #[serde(rename = "createdTime")]
+    pub created_time: DateTime<Utc>,
+    #[serde(rename = "guardians")]
+    pub guardians: Vec<Guardian>,
+    #[serde(rename = "subGroups")]
+    pub sub_groups: Vec<SubGroupId>,
+    #[serde(rename = "respondent")]
+    pub respondent: bool,
+    #[serde(rename = "roles")]
+    pub roles: Option<Vec<RoleId>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct SubGroupId(String);
+
+impl SubGroupId {
+    pub fn new(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct SubGroup {
+    #[serde(rename = "id")]
+    pub id: SubGroupId,
+    #[serde(rename = "name")]
+    pub name: String,
+    #[serde(rename = "color")]
+    pub color: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct GroupId(String);
+
+impl GroupId {
+    pub fn new(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct Group {
+    #[serde(rename = "id")]
+    pub id: GroupId,
+    #[serde(rename = "contactPerson")]
+    pub contact_person: UserProfile,
+    #[serde(rename = "name")]
+    pub name: String,
+    #[serde(rename = "activity")]
+    pub activity: String,
+    #[serde(rename = "createdTime")]
+    pub created_time: DateTime<Utc>,
+    #[serde(rename = "members")]
+    pub members: Vec<GroupMember>,
+    #[serde(rename = "subGroups")]
+    pub sub_groups: Vec<SubGroup>,
+    #[serde(rename = "roles")]
+    pub roles: Vec<Role>,
+}
+
+pub async fn get_group(group_id: &GroupId, session: &UserSession) -> reqwest::Result<Group> {
+    let response = reqwest::Client::new()
+        .get(format!(
+            "https://api.spond.com/core/v1/group/{}",
+            group_id.0
+        ))
+        .bearer_auth(session.login_token.clone())
+        .send()
+        .await?;
+    match response.error_for_status() {
+        Ok(res) => res.json().await,
+        Err(e) => Err(e),
     }
 }
 
@@ -62,37 +219,42 @@ struct GetSpondsRequest {
     sub_group_id: Option<SubGroupId>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-enum SpondType {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SpondType {
     Event,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct UserId(String);
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+pub struct SpondId(String);
 
-#[derive(Debug, Deserialize)]
-struct SpondId(String);
-
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-enum Response {
+pub enum Response {
     Accepted,
     Declined,
+    Unanswered,
 }
 
-#[derive(Debug, Deserialize)]
-struct Owner {
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct Owner {
+    #[serde(rename = "id")]
+    pub id: UserId,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+pub struct OwnerResponse {
     #[serde(rename = "id")]
     id: UserId,
     #[serde(rename = "response")]
     response: Response,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct LocationId(String);
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct LocationId(String);
 
-#[derive(Debug, Deserialize)]
-struct Location {
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+pub struct Location {
     #[serde(rename = "id")]
     id: LocationId,
     #[serde(rename = "feature")]
@@ -100,43 +262,66 @@ struct Location {
     #[serde(rename = "address")]
     address: String,
     #[serde(rename = "latitude")]
-    latitude: f32,
+    latitude: Decimal,
     #[serde(rename = "longitude")]
-    longitude: f32,
+    longitude: Decimal,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct NewLocation {
+    #[serde(rename = "feature")]
+    feature: String,
+    #[serde(rename = "address")]
+    address: String,
+    #[serde(rename = "latitude")]
+    latitude: Decimal,
+    #[serde(rename = "longitude")]
+    longitude: Decimal,
+}
+
+impl NewLocation {
+    pub fn goals() -> Self {
+        Self {
+            feature: "Goals Reading".to_owned(),
+            address: "Woodlands Avenue, Woodley, Reading".to_owned(),
+            latitude: rust_decimal_macros::dec!(51.453648),
+            longitude: rust_decimal_macros::dec!(-0.9185121),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "UPPERCASE")]
-enum MatchType {
+pub enum MatchType {
     Home,
     Away,
     Tournament,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct MatchInfo {
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct MatchInfo {
     #[serde(rename = "teamName")]
-    team_name: String,
+    pub team_name: String,
     #[serde(rename = "opponentName")]
-    opponent_name: String,
+    pub opponent_name: String,
     #[serde(rename = "teamColour")]
-    team_colour: Option<String>,
+    pub team_colour: Option<String>,
     #[serde(rename = "opponentColour")]
-    opponent_colour: Option<String>,
+    pub opponent_colour: Option<String>,
     #[serde(rename = "type")]
-    typ: MatchType,
+    pub typ: MatchType,
     #[serde(rename = "scoresSet")]
-    scores_set: bool,
+    pub scores_set: bool,
     #[serde(rename = "scoresSetEver")]
-    scores_set_ever: bool,
+    pub scores_set_ever: bool,
     #[serde(rename = "teamScore")]
-    team_score: Option<u8>,
+    pub team_score: Option<u8>,
     #[serde(rename = "opponentScore")]
-    opponent_score: Option<u8>,
+    pub opponent_score: Option<u8>,
     #[serde(rename = "scoresPublic")]
-    scores_public: bool,
+    pub scores_public: bool,
     #[serde(rename = "scoresFinal")]
-    scores_final: bool,
+    pub scores_final: bool,
 }
 
 impl MatchInfo {
@@ -157,53 +342,36 @@ impl MatchInfo {
     }
 }
 
-#[derive(Debug, Deserialize)]
-struct Spond {
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+pub struct Spond {
     #[serde(rename = "id")]
-    id: SpondId,
+    pub id: SpondId,
     #[serde(rename = "creatorId")]
-    creator_id: SpondId,
+    pub creator_id: SpondId,
     #[serde(rename = "owners")]
-    owners: Vec<Owner>,
+    pub owners: Vec<OwnerResponse>,
     #[serde(rename = "heading")]
-    heading: String,
+    pub heading: String,
     #[serde(rename = "description")]
-    description: String,
+    pub description: Option<String>,
     #[serde(rename = "startTimestamp")]
-    start_timestamp: DateTime<Utc>,
+    pub start_timestamp: DateTime<Utc>,
     #[serde(rename = "endTimestamp")]
-    end_timestamp: DateTime<Utc>,
+    pub end_timestamp: DateTime<Utc>,
     #[serde(rename = "meetupTimestamp")]
-    meetup_timestamp: DateTime<Utc>,
+    pub meetup_timestamp: Option<DateTime<Utc>>,
     #[serde(rename = "meetupPrior")]
-    meetup_prior: u16,
+    pub meetup_prior: Option<u16>,
     #[serde(rename = "location")]
-    location: Option<Location>,
+    pub location: Option<Location>,
     #[serde(rename = "matchInfo")]
-    match_info: Option<MatchInfo>,
+    pub match_info: Option<MatchInfo>,
     #[serde(rename = "matchEvent")]
-    match_event: bool,
+    pub match_event: bool,
     #[serde(rename = "createdTime")]
-    created_time: DateTime<Utc>,
+    pub created_time: DateTime<Utc>,
     #[serde(rename = "expired")]
-    expired: bool,
-}
-
-impl Spond {
-    fn to_fixture(&self) -> Option<Fixture> {
-        self.match_info.as_ref().map(|match_info| Fixture {
-            fixture_type: match match_info.typ {
-                MatchType::Tournament => FixtureType::Cup,
-                MatchType::Home | MatchType::Away => FixtureType::League,
-            },
-            fixture_side: match match_info.typ {
-                MatchType::Tournament | MatchType::Home => FixtureSide::Home,
-                MatchType::Away => FixtureSide::Away,
-            },
-            date_time: self.start_timestamp,
-            opposition: match_info.opponent_name.clone(),
-        })
-    }
+    pub expired: bool,
 }
 
 async fn get_sponds(
@@ -248,76 +416,89 @@ async fn get_sponds(
     }
 }
 
-#[derive(Debug, Serialize)]
-enum Visibility {
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum Visibility {
     Invitees,
 }
 
-#[derive(Debug, Serialize)]
-enum AutoReminderType {
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum AutoReminderType {
     Disabled,
 }
 
-#[derive(Debug, Serialize)]
-struct Attachment {}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Attachment {}
 
-#[derive(Debug, Serialize)]
-enum Type {
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum Type {
     Event,
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct GroupId(String);
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct RecipientGroup {
+    #[serde(rename = "id")]
+    pub id: GroupId,
+    #[serde(rename = "subGroups")]
+    pub sub_groups: Vec<SubGroupId>,
+}
 
-impl GroupId {
-    pub fn new(s: &str) -> Self {
-        Self(s.to_string())
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Recipients {
+    #[serde(rename = "groupMembers")]
+    pub group_members: Vec<GroupMemberId>,
+    #[serde(rename = "group")]
+    pub group: RecipientGroup,
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct SubGroupId(String);
-
-impl SubGroupId {
-    pub fn new(s: &str) -> Self {
-        Self(s.to_string())
-    }
+pub struct CreateSpondRequest {
+    #[serde(rename = "heading")]
+    pub heading: String,
+    #[serde(rename = "spondType")]
+    pub spond_type: SpondType,
+    #[serde(rename = "startTimestamp")]
+    pub start_timestamp: DateTime<Utc>,
+    #[serde(rename = "endTimestamp")]
+    pub end_timestamp: DateTime<Utc>,
+    #[serde(rename = "openEnded")]
+    pub open_ended: bool,
+    #[serde(rename = "commentsDisabled")]
+    pub comments_disabled: bool,
+    #[serde(rename = "meetupPrior")]
+    pub meetup_prior: Option<u16>,
+    #[serde(rename = "maxAccepted")]
+    pub max_accepted: u32,
+    #[serde(rename = "rsvpDate")]
+    pub rsvp_date: Option<NaiveDate>,
+    #[serde(rename = "location")]
+    pub location: Option<NewLocation>,
+    #[serde(rename = "owners")]
+    pub owners: Vec<Owner>,
+    #[serde(rename = "visibility")]
+    pub visibility: Visibility,
+    #[serde(rename = "participantsHidden")]
+    pub participants_hidden: bool,
+    #[serde(rename = "autoReminderType")]
+    pub auto_reminder_type: AutoReminderType,
+    #[serde(rename = "matchInfo")]
+    pub match_info: Option<MatchInfo>,
+    #[serde(rename = "autoAccept")]
+    pub auto_accept: bool,
+    #[serde(rename = "attachments")]
+    pub attachments: Vec<Attachment>,
+    #[serde(rename = "type")]
+    pub typ: Type,
+    #[serde(rename = "recipients")]
+    pub recipients: Recipients,
 }
 
-#[derive(Debug, Serialize)]
-struct Group {
-    id: GroupId,
-    sub_groups: Vec<SubGroupId>,
-}
-
-#[derive(Debug, Serialize)]
-struct Recipients {
-    group_members: Vec<GroupId>,
-    group: Group,
-}
-
-#[derive(Debug, Serialize)]
-struct CreateSpondRequest {
-    heading: String,
-    spond_type: SpondType,
-    start_time_stamp: DateTime<Utc>,
-    open_ended: bool,
-    comments_disabled: bool,
-    max_accepted: u32,
-    rsvp_date: Option<NaiveDate>,
-    location: Option<LocationId>,
-    owners: Vec<UserId>,
-    visibility: Visibility,
-    participants_hidden: bool,
-    auto_reminder_type: AutoReminderType,
-    match_info: Option<MatchInfo>,
-    auto_accept: bool,
-    attachments: Vec<Attachment>,
-    typ: Type,
-    recipients: Recipients,
-}
-
-async fn create_spond(request: CreateSpondRequest, session: &UserSession) -> reqwest::Result<()> {
+pub async fn create_spond(
+    request: CreateSpondRequest,
+    session: &UserSession,
+) -> reqwest::Result<()> {
     let response = reqwest::Client::new()
         .post("https://api.spond.com/core/v1/sponds")
         .json(&request)
@@ -330,11 +511,11 @@ async fn create_spond(request: CreateSpondRequest, session: &UserSession) -> req
     }
 }
 
-pub async fn get_upcoming_fixtures(
-    group_id: GroupId,
-    sub_group_id: SubGroupId,
+pub async fn get_upcoming_matches(
+    group_id: &GroupId,
+    sub_group_id: &SubGroupId,
     session: &UserSession,
-) -> Result<Vec<Fixture>, String> {
+) -> Result<Vec<Spond>, String> {
     get_sponds(
         GetSpondsRequest {
             add_profile_info: false,
@@ -342,22 +523,17 @@ pub async fn get_upcoming_fixtures(
             exclude_repeating: true,
             include_comments: false,
             include_hidden: false,
-            group_id: Some(group_id),
+            group_id: Some(group_id.clone()),
             mtch: true,
             min_start_timestamp: Some(Utc::now()),
             max_start_timestamp: None,
             scheduled: false,
             max: None,
             order: None,
-            sub_group_id: Some(sub_group_id),
+            sub_group_id: Some(sub_group_id.clone()),
         },
         &session,
     )
     .await
     .map_err(|e| e.to_string())
-    .map(|sponds| sponds.iter().filter_map(|s| s.to_fixture()).collect())
-}
-
-pub async fn create_fixtures(fixtures: &Vec<Fixture>, session: &UserSession) -> Result<(), String> {
-    todo!()
 }
