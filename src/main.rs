@@ -11,6 +11,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             password: args.get(2).unwrap().to_string(),
         },
         spond::GroupId::new("12BC6CAB8503463C8845B14A6CBC8D4A"),
+        true,
     )
     .await
 }

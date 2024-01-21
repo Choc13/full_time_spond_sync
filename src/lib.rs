@@ -1,4 +1,5 @@
-use chrono::{Datelike, Duration};
+use chrono::{DateTime, Datelike, Duration, Utc};
+use spond::SubGroup;
 use std::collections::HashMap;
 
 pub mod full_time;
@@ -68,6 +69,44 @@ impl spond::Spond {
 }
 
 impl full_time::Fixture {
+    fn to_spond_start_time(&self) -> DateTime<Utc> {
+        self.date_time
+    }
+
+    fn to_spond_end_time(&self) -> DateTime<Utc> {
+        self.date_time
+            .checked_add_signed(Duration::hours(1))
+            .unwrap()
+    }
+
+    fn to_spond_meetup_prior(&self) -> Option<u16> {
+        if self
+            .date_time
+            .checked_sub_signed(Duration::minutes(15))
+            .unwrap()
+            .day()
+            != self.date_time.day()
+        {
+            None
+        } else {
+            Some(15)
+        }
+    }
+
+    fn to_spond_match_info(&self, sub_group: &SubGroup) -> spond::MatchInfo {
+        spond::MatchInfo::new(
+            sub_group.name.clone(),
+            self.opposition.clone(),
+            match self.typ {
+                full_time::FixtureType::Cup => spond::MatchType::Tournament,
+                full_time::FixtureType::League => match self.side {
+                    full_time::FixtureSide::Home => spond::MatchType::Home,
+                    full_time::FixtureSide::Away => spond::MatchType::Away,
+                },
+            },
+        )
+    }
+
     fn to_create_spond_request(
         &self,
         group: &spond::Group,
@@ -100,23 +139,10 @@ impl full_time::Fixture {
         spond::CreateSpondRequest {
             heading: format!("{} - {}", sub_group.name, self.opposition),
             spond_type: spond::SpondType::Event,
-            start_timestamp: self.date_time,
-            end_timestamp: self
-                .date_time
-                .checked_add_signed(Duration::hours(1))
-                .unwrap(),
+            start_timestamp: self.to_spond_start_time(),
+            end_timestamp: self.to_spond_end_time(),
+            meetup_prior: self.to_spond_meetup_prior(),
             open_ended: false,
-            meetup_prior: if self
-                .date_time
-                .checked_sub_signed(Duration::minutes(15))
-                .unwrap()
-                .day()
-                != self.date_time.day()
-            {
-                None
-            } else {
-                Some(15)
-            },
             comments_disabled: false,
             max_accepted: 0,
             rsvp_date: None,
@@ -127,17 +153,7 @@ impl full_time::Fixture {
             visibility: spond::Visibility::Invitees,
             participants_hidden: false,
             auto_reminder_type: spond::AutoReminderType::Disabled,
-            match_info: Some(spond::MatchInfo::new(
-                sub_group.name.clone(),
-                self.opposition.clone(),
-                match self.typ {
-                    full_time::FixtureType::Cup => spond::MatchType::Tournament,
-                    full_time::FixtureType::League => match self.side {
-                        full_time::FixtureSide::Home => spond::MatchType::Home,
-                        full_time::FixtureSide::Away => spond::MatchType::Away,
-                    },
-                },
-            )),
+            match_info: Some(self.to_spond_match_info(sub_group)),
             auto_accept: false,
             attachments: vec![],
             typ: spond::Type::Event,
@@ -148,6 +164,28 @@ impl full_time::Fixture {
                     sub_groups: vec![sub_group.id.clone()],
                 },
             },
+        }
+    }
+}
+
+impl spond::Spond {
+    fn modify(
+        &self,
+        fixture: &full_time::Fixture,
+        group: &spond::Group,
+        sub_group_id: &spond::SubGroupId,
+    ) -> Self {
+        let sub_group = group
+            .sub_groups
+            .iter()
+            .find(|sg| sg.id == *sub_group_id)
+            .unwrap();
+        Self {
+            start_timestamp: fixture.to_spond_start_time(),
+            end_timestamp: fixture.to_spond_end_time(),
+            meetup_prior: fixture.to_spond_meetup_prior(),
+            match_info: Some(fixture.to_spond_match_info(sub_group)),
+            ..(self.clone())
         }
     }
 }
@@ -199,6 +237,7 @@ pub async fn sync(
     team: Team,
     spond_creds: &spond::UserCredentials,
     spond_group_id: spond::GroupId,
+    dry_run: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let full_times_fixtures = full_time::get_upcoming_fixtures(
         team.current_full_time_season_id(),
@@ -209,17 +248,40 @@ pub async fn sync(
     let spond_session = spond::login(&spond_creds).await?;
     let spond_group = spond::get_group(&spond_group_id, &spond_session).await?;
     let spond_sub_group_id = team.to_spond_sub_group_id();
-    let spond_fixtures =
+    let mut spond_fixtures =
         spond::get_upcoming_matches(&spond_group_id, &spond_sub_group_id, &spond_session).await?;
+    spond_fixtures.sort_by_key(|f| f.start_timestamp);
+    println!("Spond fixtures");
+    println!(
+        "{:?}",
+        spond_fixtures
+            .clone()
+            .iter()
+            .map(|f| (f.heading.clone(), f.start_timestamp.clone()))
+            .collect::<Vec<_>>()
+    );
     let diff = Diff::new(full_times_fixtures, spond_fixtures);
 
     println!("Fixture diff:\n{:#?}", diff);
-    for fixture in diff.new.iter() {
-        spond::create_spond(
-            fixture.to_create_spond_request(&spond_group, &spond_sub_group_id),
-            &spond_session,
-        )
-        .await?;
+    println!(
+        "Fixture diff summary\nNew: {:#?}\nModified: {:#?}\nRemoved: {:#?}",
+        diff.new.len(),
+        diff.modified.len(),
+        diff.removed.len()
+    );
+
+    if !dry_run {
+        for fixture in diff.new.iter() {
+            let spond = fixture.to_create_spond_request(&spond_group, &spond_sub_group_id);
+            spond::create_spond(spond, &spond_session).await?;
+        }
+        for (fixture, spond_fixture) in diff.modified.iter() {
+            spond::update_spond(
+                spond_fixture.modify(&fixture, &spond_group, &spond_sub_group_id),
+                &spond_session,
+            )
+            .await?;
+        }
     }
     Ok(())
 }

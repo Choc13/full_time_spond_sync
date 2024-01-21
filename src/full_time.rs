@@ -175,5 +175,6 @@ pub async fn get_upcoming_fixtures(
         .select(&Selector::parse("tbody tr").unwrap())
         .map(|tr| tr.select(&td_selector))
         .map(|r| parse_fixture(r, &team.name))
+        .filter(|f| f.date_time >= Utc::now())
         .collect::<Vec<_>>())
 }

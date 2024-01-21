@@ -225,7 +225,7 @@ pub enum SpondType {
     Event,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct SpondId(String);
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -242,7 +242,7 @@ pub struct Owner {
     pub id: UserId,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct OwnerResponse {
     #[serde(rename = "id")]
     id: UserId,
@@ -253,7 +253,7 @@ pub struct OwnerResponse {
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct LocationId(String);
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Location {
     #[serde(rename = "id")]
     id: LocationId,
@@ -342,7 +342,7 @@ impl MatchInfo {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Spond {
     #[serde(rename = "id")]
     pub id: SpondId,
@@ -511,6 +511,22 @@ pub async fn create_spond(
     }
 }
 
+pub async fn update_spond(spond: Spond, session: &UserSession) -> reqwest::Result<()> {
+    let response = reqwest::Client::new()
+        .post(format!(
+            "https://api.spond.com/core/v1/sponds/{}",
+            spond.id.0
+        ))
+        .json(&spond)
+        .bearer_auth(session.login_token.clone())
+        .send()
+        .await?;
+    match response.error_for_status() {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
+    }
+}
+
 pub async fn get_upcoming_matches(
     group_id: &GroupId,
     sub_group_id: &SubGroupId,
@@ -522,14 +538,14 @@ pub async fn get_upcoming_matches(
             exclude_availability: true,
             exclude_repeating: true,
             include_comments: false,
-            include_hidden: false,
+            include_hidden: true,
             group_id: Some(group_id.clone()),
             mtch: true,
             min_start_timestamp: Some(Utc::now()),
             max_start_timestamp: None,
             scheduled: false,
-            max: None,
-            order: None,
+            max: Some(100),
+            order: Some(Order::Asc),
             sub_group_id: Some(sub_group_id.clone()),
         },
         &session,
