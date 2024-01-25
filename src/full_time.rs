@@ -156,7 +156,6 @@ pub async fn get_upcoming_fixtures(
         "https://fulltime.thefa.com/displayTeam.html?divisionseason={}&teamID={}",
         *season_id, *team.id
     );
-    println!("Looking for new fixtures at {:?}", url);
     let html = reqwest::get(url).await?.text().await?;
     let document = Html::parse_document(&html);
     let tables = document

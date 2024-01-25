@@ -5,11 +5,37 @@ use std::collections::HashMap;
 pub mod full_time;
 pub mod spond;
 
+#[derive(Debug, Clone, Copy)]
 pub enum Team {
     Jedis,
     Mandos,
     Rebels,
     Stormtroopers,
+}
+
+impl std::fmt::Display for Team {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Team::Jedis => "Jedis",
+            Team::Mandos => "Mandos",
+            Team::Rebels => "Rebels",
+            Team::Stormtroopers => "Stormtroopers",
+        })
+    }
+}
+
+impl std::str::FromStr for Team {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_ascii_lowercase().as_str() {
+            "jedis" => Ok(Team::Jedis),
+            "mandos" => Ok(Team::Mandos),
+            "rebels" => Ok(Team::Rebels),
+            "stormtroopers" => Ok(Team::Stormtroopers),
+            _ => Err(format!("Invalid team {s}")),
+        }
+    }
 }
 
 impl Team {
@@ -233,11 +259,17 @@ impl Diff {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum SyncType {
+    Dry,
+    Real,
+}
+
 pub async fn sync(
     team: Team,
     spond_creds: &spond::UserCredentials,
     spond_group_id: spond::GroupId,
-    dry_run: bool,
+    sync_type: SyncType,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let full_times_fixtures = full_time::get_upcoming_fixtures(
         team.current_full_time_season_id(),
@@ -251,36 +283,37 @@ pub async fn sync(
     let mut spond_fixtures =
         spond::get_upcoming_matches(&spond_group_id, &spond_sub_group_id, &spond_session).await?;
     spond_fixtures.sort_by_key(|f| f.start_timestamp);
-    println!("Spond fixtures");
-    println!(
-        "{:?}",
-        spond_fixtures
-            .clone()
-            .iter()
-            .map(|f| (f.heading.clone(), f.start_timestamp.clone()))
-            .collect::<Vec<_>>()
-    );
     let diff = Diff::new(full_times_fixtures, spond_fixtures);
 
-    println!("Fixture diff:\n{:#?}", diff);
-    println!(
-        "Fixture diff summary\nNew: {:#?}\nModified: {:#?}\nRemoved: {:#?}",
-        diff.new.len(),
-        diff.modified.len(),
-        diff.removed.len()
-    );
-
-    if !dry_run {
-        for fixture in diff.new.iter() {
-            let spond = fixture.to_create_spond_request(&spond_group, &spond_sub_group_id);
-            spond::create_spond(spond, &spond_session).await?;
+    match sync_type {
+        SyncType::Dry => {
+            println!("Fixture diff for {}:", team);
+            println!(
+                "Summary\nNew: {:#?}\nModified: {:#?}\nRemoved: {:#?}\n",
+                diff.new.len(),
+                diff.modified.len(),
+                diff.removed.len()
+            );
         }
-        for (fixture, spond_fixture) in diff.modified.iter() {
-            spond::update_spond(
-                spond_fixture.modify(&fixture, &spond_group, &spond_sub_group_id),
-                &spond_session,
-            )
-            .await?;
+        SyncType::Real => {
+            println!("Creating {} new fixtures for {}", diff.new.len(), team);
+            for fixture in diff.new.iter() {
+                let spond = fixture.to_create_spond_request(&spond_group, &spond_sub_group_id);
+                spond::create_spond(spond, &spond_session).await?;
+            }
+
+            println!(
+                "Updating {} modified fixtures for {}",
+                diff.modified.len(),
+                team
+            );
+            for (fixture, spond_fixture) in diff.modified.iter() {
+                spond::update_spond(
+                    spond_fixture.modify(&fixture, &spond_group, &spond_sub_group_id),
+                    &spond_session,
+                )
+                .await?;
+            }
         }
     }
     Ok(())
