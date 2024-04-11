@@ -102,6 +102,7 @@ pub enum Permission {
     Payments,
     Chat,
     Files,
+    FundRaisers,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -518,6 +519,19 @@ pub async fn update_spond(spond: Spond, session: &UserSession) -> reqwest::Resul
             spond.id.0
         ))
         .json(&spond)
+        .bearer_auth(session.login_token.clone())
+        .send()
+        .await?;
+    match response.error_for_status() {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
+    }
+}
+
+pub async fn delete_spond(id: &SpondId, session: &UserSession) -> reqwest::Result<()> {
+    let response = reqwest::Client::new()
+        .delete(format!("https://api.spond.com/core/v1/sponds/{}", id.0))
+        .query(&[("quiet", "true")])
         .bearer_auth(session.login_token.clone())
         .send()
         .await?;

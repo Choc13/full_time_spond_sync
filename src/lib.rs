@@ -1,4 +1,5 @@
 use chrono::{DateTime, Datelike, Duration, Utc};
+use chrono_tz::{Europe::London, Tz};
 use spond::SubGroup;
 use std::collections::HashMap;
 
@@ -50,10 +51,10 @@ impl Team {
 
     pub fn to_full_time_team(&self) -> full_time::Team {
         let (id, name) = match self {
-            Team::Jedis => (968597709, "Twyford Comets FC U7 Jedis"),
-            Team::Mandos => (14943433, "Twyford Comets FC U7 Mandalorians"),
-            Team::Rebels => (22659086, "Twyford Comets FC U7 Rebels"),
-            Team::Stormtroopers => (372755773, "Twyford Comets FC U7 Stormtroopers"),
+            Team::Jedis => (528960649, "Twyford Comets Jedi U7"),
+            Team::Mandos => (103590409, "Twyford Comets Mandalorians U7"),
+            Team::Rebels => (781428963, "Twyford Comets Rebels U7"),
+            Team::Stormtroopers => (328562530, "Twyford Comets Stormtroopers U7"),
         };
         full_time::Team {
             id: full_time::TeamId::new(id),
@@ -63,10 +64,10 @@ impl Team {
 
     pub fn current_full_time_season_id(&self) -> full_time::SeasonId {
         full_time::SeasonId::new(match self {
-            Team::Jedis => 314047701,
-            Team::Mandos => 324892378,
-            Team::Rebels => 910978939,
-            Team::Stormtroopers => 835701142,
+            Team::Jedis => 432144974,
+            Team::Mandos => 936651375,
+            Team::Rebels => 658075222,
+            Team::Stormtroopers => 936651375,
         })
     }
 }
@@ -228,12 +229,12 @@ impl Diff {
         let fixtures = fixtures
             .iter()
             .cloned()
-            .map(|f| (f.date_time.date_naive(), f))
+            .map(|f| (f.date_time.with_timezone(&London).date_naive(), f))
             .collect::<HashMap<_, _>>();
         let sponds = sponds
             .iter()
             .cloned()
-            .map(|s| (s.start_timestamp.date_naive(), s))
+            .map(|s| (s.start_timestamp.with_timezone(&London).date_naive(), s))
             .collect::<HashMap<_, _>>();
         Self {
             new: fixtures
@@ -313,6 +314,15 @@ pub async fn sync(
                     &spond_session,
                 )
                 .await?;
+            }
+
+            println!(
+                "Deleting {} removed fixtures for {}",
+                diff.removed.len(),
+                team
+            );
+            for spond in diff.removed.iter() {
+                spond::delete_spond(&spond.id, &spond_session).await?;
             }
         }
     }
