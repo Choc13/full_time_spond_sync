@@ -101,9 +101,9 @@ fn parse_fixture_time(cell: &ElementRef) -> DateTime<Utc> {
 }
 
 fn try_parse_opposition(cell: &ElementRef, team_name: &TeamName) -> Option<String> {
-    match &cell
+    match cell
         .select(&Selector::parse("a").unwrap())
-        .map(|x| x.inner_html().trim().to_string())
+        .flat_map(|x| x.text().map(|s| s.trim()))
         .collect::<Vec<_>>()[..]
     {
         [opposition] => {

@@ -51,10 +51,10 @@ impl Team {
 
     pub fn to_full_time_team(&self) -> full_time::Team {
         let (id, name) = match self {
-            Team::Jedis => (528960649, "Twyford Comets Jedi U7"),
-            Team::Mandos => (103590409, "Twyford Comets Mandalorians U7"),
-            Team::Rebels => (781428963, "Twyford Comets Rebels U7"),
-            Team::Stormtroopers => (328562530, "Twyford Comets Stormtroopers U7"),
+            Team::Jedis => (994929228, "Twyford Comets FC U8 Jedis"),
+            Team::Mandos => (14943433, "Twyford Comets FC U8 Mandalorians"),
+            Team::Rebels => (22659086, "Twyford Comets FC U8 Rebels"),
+            Team::Stormtroopers => (372755773, "Twyford Comets FC U8 Stormtroopers"),
         };
         full_time::Team {
             id: full_time::TeamId::new(id),
@@ -64,10 +64,10 @@ impl Team {
 
     pub fn current_full_time_season_id(&self) -> full_time::SeasonId {
         full_time::SeasonId::new(match self {
-            Team::Jedis => 432144974,
-            Team::Mandos => 936651375,
-            Team::Rebels => 658075222,
-            Team::Stormtroopers => 936651375,
+            Team::Jedis => 421487538,
+            Team::Mandos => 225532387,
+            Team::Rebels => 265077547,
+            Team::Stormtroopers => 197575749,
         })
     }
 }
