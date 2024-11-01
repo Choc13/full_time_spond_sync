@@ -58,10 +58,16 @@ pub enum FixtureType {
     League,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq)]
 pub enum FixtureSide {
     Home,
     Away,
+}
+
+#[derive(Copy, Debug, Clone, PartialEq, Eq)]
+pub enum Venue {
+    Goals,
+    WoodfordPark,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -70,6 +76,7 @@ pub struct Fixture {
     pub side: FixtureSide,
     pub date_time: DateTime<Utc>,
     pub opposition: String,
+    pub venue: Venue,
 }
 
 fn parse_fixture_type(cell: &ElementRef) -> FixtureType {
@@ -132,16 +139,28 @@ fn parse_teams(
     }
 }
 
+fn parse_venue(cell: &ElementRef) -> Venue {
+    let venue_name = cell.inner_html().trim().to_lowercase();
+    if venue_name.contains("goals centre") {
+        Venue::Goals
+    } else if venue_name.contains("woodford park") {
+        Venue::WoodfordPark
+    } else {
+        panic!("Unknown venue {}", venue_name)
+    }
+}
+
 fn parse_fixture<'a>(row: impl Iterator<Item = ElementRef<'a>>, team_name: &TeamName) -> Fixture {
     let row = row.collect::<Vec<_>>();
     match &row[..] {
-        [typ, date_time, home_team, _, _, _, away_team, _] => {
+        [typ, date_time, home_team, _, _, _, away_team, venue] => {
             let (fixture_side, opposition) = parse_teams(home_team, away_team, team_name);
             Fixture {
                 typ: parse_fixture_type(typ),
                 side: fixture_side,
                 date_time: parse_fixture_time(date_time),
                 opposition,
+                venue: parse_venue(venue),
             }
         }
         _ => panic!("Incorrect number of cells in table row."),

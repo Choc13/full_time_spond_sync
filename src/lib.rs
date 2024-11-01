@@ -64,10 +64,10 @@ impl Team {
 
     pub fn current_full_time_season_id(&self) -> full_time::SeasonId {
         full_time::SeasonId::new(match self {
-            Team::Jedis => 421487538,
-            Team::Mandos => 225532387,
-            Team::Rebels => 265077547,
-            Team::Stormtroopers => 197575749,
+            Team::Jedis => 658691764,
+            Team::Mandos => 706033408,
+            Team::Rebels => 166464392,
+            Team::Stormtroopers => 581052279,
         })
     }
 }
@@ -91,6 +91,11 @@ impl spond::Spond {
                 },
                 date_time: self.start_timestamp,
                 opposition: match_info.opponent_name.clone(),
+                venue: self
+                    .location
+                    .as_ref()
+                    .expect("All fixtures should have a location")
+                    .to_full_time_venue(),
             })
     }
 }
@@ -173,7 +178,7 @@ impl full_time::Fixture {
             comments_disabled: false,
             max_accepted: 0,
             rsvp_date: None,
-            location: Some(spond::NewLocation::goals()),
+            location: Some(spond::NewLocation::from_full_time_venue(self.venue)),
             owners: coaches
                 .filter_map(|c| c.map(|c| spond::Owner { id: c.id }))
                 .collect(),
@@ -299,6 +304,7 @@ pub async fn sync(
         SyncType::Real => {
             println!("Creating {} new fixtures for {}", diff.new.len(), team);
             for fixture in diff.new.iter() {
+                println!("{:?}", fixture);
                 let spond = fixture.to_create_spond_request(&spond_group, &spond_sub_group_id);
                 spond::create_spond(spond, &spond_session).await?;
             }
@@ -309,6 +315,7 @@ pub async fn sync(
                 team
             );
             for (fixture, spond_fixture) in diff.modified.iter() {
+                println!("{:?}", fixture);
                 spond::update_spond(
                     spond_fixture.modify(&fixture, &spond_group, &spond_sub_group_id),
                     &spond_session,

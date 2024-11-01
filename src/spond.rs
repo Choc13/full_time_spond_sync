@@ -2,6 +2,8 @@ use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
+use crate::full_time;
+
 #[derive(Debug, Serialize)]
 pub struct UserCredentials {
     pub email: String,
@@ -268,6 +270,19 @@ pub struct Location {
     longitude: Decimal,
 }
 
+impl Location {
+    const GOALS_NAME: &str = "Goals Reading";
+    const WOODFORD_PARK_NAME: &str = "Woodford Park - 3G";
+
+    pub fn to_full_time_venue(&self) -> full_time::Venue {
+        match self.feature.as_str() {
+            Self::GOALS_NAME => full_time::Venue::Goals,
+            Self::WOODFORD_PARK_NAME => full_time::Venue::WoodfordPark,
+            _ => panic!("Unknown location {}", self.feature),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct NewLocation {
     #[serde(rename = "feature")]
@@ -283,10 +298,27 @@ pub struct NewLocation {
 impl NewLocation {
     pub fn goals() -> Self {
         Self {
-            feature: "Goals Reading".to_owned(),
+            feature: Location::GOALS_NAME.to_owned(),
             address: "Woodlands Avenue, Woodley, Reading".to_owned(),
             latitude: rust_decimal_macros::dec!(51.453648),
             longitude: rust_decimal_macros::dec!(-0.9185121),
+        }
+    }
+
+    pub fn woodford_park() -> Self {
+        Self {
+            feature: Location::WOODFORD_PARK_NAME.to_owned(),
+            address: "Woodford Park Leisure Centre, Haddon Dr, Woodley, Reading, RG5 4LY"
+                .to_owned(),
+            latitude: rust_decimal_macros::dec!(51.457008),
+            longitude: rust_decimal_macros::dec!(-0.9058048),
+        }
+    }
+
+    pub fn from_full_time_venue(venue: full_time::Venue) -> Self {
+        match venue {
+            full_time::Venue::Goals => Self::goals(),
+            full_time::Venue::WoodfordPark => Self::woodford_park(),
         }
     }
 }
