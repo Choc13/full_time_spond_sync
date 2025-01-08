@@ -1,5 +1,5 @@
 use chrono::{DateTime, Datelike, Duration, Utc};
-use chrono_tz::{Europe::London, Tz};
+use chrono_tz::Europe::London;
 use spond::SubGroup;
 use std::collections::HashMap;
 
@@ -66,8 +66,8 @@ impl Team {
         full_time::SeasonId::new(match self {
             Team::Jedis => 658691764,
             Team::Mandos => 706033408,
-            Team::Rebels => 166464392,
-            Team::Stormtroopers => 581052279,
+            Team::Rebels => 675721507,
+            Team::Stormtroopers => 706033408,
         })
     }
 }
@@ -178,7 +178,7 @@ impl full_time::Fixture {
             comments_disabled: false,
             max_accepted: 0,
             rsvp_date: None,
-            location: Some(spond::NewLocation::from_full_time_venue(self.venue)),
+            location: Some(spond::Location::from_full_time_venue(self.venue)),
             owners: coaches
                 .filter_map(|c| c.map(|c| spond::Owner { id: c.id }))
                 .collect(),
@@ -217,6 +217,7 @@ impl spond::Spond {
             end_timestamp: fixture.to_spond_end_time(),
             meetup_prior: fixture.to_spond_meetup_prior(),
             match_info: Some(fixture.to_spond_match_info(sub_group)),
+            location: Some(spond::Location::from_full_time_venue(fixture.venue)),
             ..(self.clone())
         }
     }

@@ -253,13 +253,8 @@ pub struct OwnerResponse {
     response: Response,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
-pub struct LocationId(String);
-
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Location {
-    #[serde(rename = "id")]
-    id: LocationId,
     #[serde(rename = "feature")]
     feature: String,
     #[serde(rename = "address")]
@@ -281,21 +276,7 @@ impl Location {
             _ => panic!("Unknown location {}", self.feature),
         }
     }
-}
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-pub struct NewLocation {
-    #[serde(rename = "feature")]
-    feature: String,
-    #[serde(rename = "address")]
-    address: String,
-    #[serde(rename = "latitude")]
-    latitude: Decimal,
-    #[serde(rename = "longitude")]
-    longitude: Decimal,
-}
-
-impl NewLocation {
     pub fn goals() -> Self {
         Self {
             feature: Location::GOALS_NAME.to_owned(),
@@ -507,7 +488,7 @@ pub struct CreateSpondRequest {
     #[serde(rename = "rsvpDate")]
     pub rsvp_date: Option<NaiveDate>,
     #[serde(rename = "location")]
-    pub location: Option<NewLocation>,
+    pub location: Option<Location>,
     #[serde(rename = "owners")]
     pub owners: Vec<Owner>,
     #[serde(rename = "visibility")]
