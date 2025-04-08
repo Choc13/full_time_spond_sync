@@ -64,10 +64,10 @@ impl Team {
 
     pub fn current_full_time_season_id(&self) -> full_time::SeasonId {
         full_time::SeasonId::new(match self {
-            Team::Jedis => 658691764,
-            Team::Mandos => 706033408,
-            Team::Rebels => 675721507,
-            Team::Stormtroopers => 706033408,
+            Team::Jedis => 174810773,
+            Team::Mandos => 523333942,
+            Team::Rebels => 174810773,
+            Team::Stormtroopers => 560206962,
         })
     }
 }

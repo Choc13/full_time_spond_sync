@@ -143,7 +143,7 @@ fn parse_venue(cell: &ElementRef) -> Venue {
     let venue_name = cell.inner_html().trim().to_lowercase();
     if venue_name.contains("goals centre") {
         Venue::Goals
-    } else if venue_name.contains("woodford park") {
+    } else if venue_name.contains("woodford") {
         Venue::WoodfordPark
     } else {
         panic!("Unknown venue {}", venue_name)
