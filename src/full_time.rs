@@ -1,5 +1,5 @@
 use chrono::prelude::*;
-use chrono_tz::GB;
+use chrono_tz::{Europe::London, Tz};
 use reqwest::Error;
 use scraper::{ElementRef, Html, Selector};
 
@@ -74,7 +74,7 @@ pub enum Venue {
 pub struct Fixture {
     pub typ: FixtureType,
     pub side: FixtureSide,
-    pub date_time: DateTime<Utc>,
+    pub date_time: DateTime<Tz>,
     pub opposition: String,
     pub venue: Venue,
 }
@@ -87,7 +87,7 @@ fn parse_fixture_type(cell: &ElementRef) -> FixtureType {
     }
 }
 
-fn parse_fixture_time(cell: &ElementRef) -> DateTime<Utc> {
+fn parse_fixture_time(cell: &ElementRef) -> DateTime<Tz> {
     match cell
         .select(&Selector::parse("span").unwrap())
         .collect::<Vec<_>>()[..]
@@ -98,10 +98,9 @@ fn parse_fixture_time(cell: &ElementRef) -> DateTime<Utc> {
                 .expect(&format!(
                     "Invalid date time format when parsing {date_time}."
                 ))
-                .and_local_timezone(GB)
+                .and_local_timezone(London)
                 .single()
-                .expect("Not a valid GB time.")
-                .with_timezone(&Utc)
+                .expect("Not a valid London time.")
         }
         _ => panic!("Expected exactly two span elements when parsing date time."),
     }
@@ -141,7 +140,7 @@ fn parse_teams(
 
 fn parse_venue(cell: &ElementRef) -> Venue {
     let venue_name = cell.inner_html().trim().to_lowercase();
-    if venue_name.contains("goals centre") {
+    if venue_name.contains("goals") {
         Venue::Goals
     } else if venue_name.contains("woodford") {
         Venue::WoodfordPark
@@ -193,6 +192,6 @@ pub async fn get_upcoming_fixtures(
         .select(&Selector::parse("tbody tr").unwrap())
         .map(|tr| tr.select(&td_selector))
         .map(|r| parse_fixture(r, &team.name))
-        .filter(|f| f.date_time >= Utc::now())
+        .filter(|f| f.date_time.with_timezone(&Utc) >= Utc::now())
         .collect::<Vec<_>>())
 }

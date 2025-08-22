@@ -105,6 +105,8 @@ pub enum Permission {
     Chat,
     Files,
     FundRaisers,
+    #[serde(rename = "coaches-corner")]
+    CoachesCorner,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
