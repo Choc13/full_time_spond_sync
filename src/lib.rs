@@ -1,5 +1,6 @@
 use chrono::{DateTime, Datelike, Duration, Utc};
 use chrono_tz::Europe::London;
+use itertools::Itertools;
 use spond::SubGroup;
 use std::collections::HashMap;
 
@@ -248,6 +249,7 @@ impl Diff {
                 .iter()
                 .filter(|f| !sponds.contains_key(f.0))
                 .map(|f| f.1.to_owned())
+                .sorted_by_key(|f| f.date_time)
                 .collect(),
             modified: fixtures
                 .iter()
@@ -260,10 +262,12 @@ impl Diff {
                     !(spond.to_fixture().is_some_and(|s| s == *fixture)
                         && Some(fixture.to_spond_meetup_prior()) == spond.meetup_prior)
                 })
+                .sorted_by_key(|(f, _)| f.date_time)
                 .collect(),
             removed: sponds
                 .iter()
                 .filter(|f| !fixtures.contains_key(f.0))
+                .sorted_by_key(|(date_time, _)| **date_time)
                 .map(|f| f.1.to_owned())
                 .collect(),
         }
@@ -336,6 +340,7 @@ pub async fn sync(
                 team
             );
             for spond in diff.removed.iter() {
+                println!("{:?}", spond.to_fixture());
                 spond::delete_spond(&spond.id, &spond_session).await?;
             }
         }
