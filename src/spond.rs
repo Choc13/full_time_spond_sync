@@ -269,13 +269,15 @@ pub struct Location {
 
 impl Location {
     const GOALS_NAME: &str = "Goals Reading";
+    const KINGS_ACADEMY_NAME: &str = "King’s Academy Prospect";
     const WOODFORD_PARK_NAME: &str = "Woodford Park - 3G";
 
     pub fn to_full_time_venue(&self) -> full_time::Venue {
         match self.feature.as_str() {
             Self::GOALS_NAME => full_time::Venue::Goals,
+            Self::KINGS_ACADEMY_NAME => full_time::Venue::KingsAcademy,
             Self::WOODFORD_PARK_NAME => full_time::Venue::WoodfordPark,
-            _ => panic!("Unknown location {}", self.feature),
+            _ => panic!("Unknown location '{}'", self.feature),
         }
     }
 
@@ -285,6 +287,16 @@ impl Location {
             address: "Woodlands Avenue, Woodley, Reading".to_owned(),
             latitude: rust_decimal_macros::dec!(51.453648),
             longitude: rust_decimal_macros::dec!(-0.9185121),
+        }
+    }
+
+    pub fn kings_academy() -> Self {
+        Self {
+            feature: Location::KINGS_ACADEMY_NAME.to_owned(),
+            address: "King's Academy Prospect, Cockney Hill, Tilehurst, Reading RG30 4EX"
+                .to_owned(),
+            latitude: rust_decimal_macros::dec!(51.44725212792346),
+            longitude: rust_decimal_macros::dec!(-1.01962455537632),
         }
     }
 
@@ -301,6 +313,7 @@ impl Location {
     pub fn from_full_time_venue(venue: full_time::Venue) -> Self {
         match venue {
             full_time::Venue::Goals => Self::goals(),
+            full_time::Venue::KingsAcademy => Self::kings_academy(),
             full_time::Venue::WoodfordPark => Self::woodford_park(),
         }
     }

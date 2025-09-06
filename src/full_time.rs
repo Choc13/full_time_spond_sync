@@ -67,6 +67,7 @@ pub enum FixtureSide {
 #[derive(Copy, Debug, Clone, PartialEq, Eq)]
 pub enum Venue {
     Goals,
+    KingsAcademy,
     WoodfordPark,
 }
 
@@ -144,6 +145,8 @@ fn parse_venue(cell: &ElementRef) -> Venue {
         Venue::Goals
     } else if venue_name.contains("woodford") {
         Venue::WoodfordPark
+    } else if venue_name.contains("kings academy") {
+        Venue::KingsAcademy
     } else {
         panic!("Unknown venue {}", venue_name)
     }
