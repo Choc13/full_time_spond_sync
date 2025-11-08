@@ -148,8 +148,8 @@ pub struct GroupMember {
 pub struct SubGroupId(String);
 
 impl SubGroupId {
-    pub fn new(s: &str) -> Self {
-        Self(s.to_string())
+    pub fn new(s: impl Into<String>) -> Self {
+        Self(s.into())
     }
 }
 

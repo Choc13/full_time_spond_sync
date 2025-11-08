@@ -41,8 +41,8 @@ impl std::ops::Deref for TeamId {
 pub struct TeamName(String);
 
 impl TeamName {
-    pub fn new(s: &str) -> Self {
-        TeamName(s.to_string())
+    pub fn new(s: impl Into<String>) -> Self {
+        TeamName(s.into())
     }
 }
 

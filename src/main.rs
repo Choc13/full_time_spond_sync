@@ -1,21 +1,8 @@
+use std::collections::HashMap;
+
 use clap::{Parser, Subcommand};
 
-use full_time_spond_sync::{spond, sync, SyncType, Team};
-
-// impl clap::ValueEnum for Team {
-//     fn value_variants<'a>() -> &'a [Self] {
-//         ["mandos", "jedis", "rebels", "stormtroopers"]
-//     }
-
-//     fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
-//         match self {
-//             Team::Jedis => "jedi",
-//             Team::Mandos => "mandos",
-//             Team::Rebels => "rebels",
-//             Team::Stormtroopers => "stormtroopers",
-//         }
-//     }
-// }
+use full_time_spond_sync::{spond, sync, team, SyncType};
 
 #[derive(Subcommand, Debug)]
 enum SubCommand {
@@ -38,7 +25,7 @@ struct Args {
 
     // The teams to run for
     #[arg(long, value_delimiter = ',')]
-    teams: Vec<Team>,
+    teams: Vec<String>,
 
     #[command(subcommand)]
     cmd: SubCommand,
@@ -51,18 +38,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         email: args.email,
         password: args.password,
     };
+    let teams = team::load()?;
+    let team_lookup = teams
+        .into_iter()
+        .map(|t| (t.name.to_lowercase(), t))
+        .collect::<HashMap<_, _>>();
 
-    for team in args.teams {
-        sync(
-            team,
-            &creds,
-            spond::GroupId::new("12BC6CAB8503463C8845B14A6CBC8D4A"),
-            match args.cmd {
-                SubCommand::Diff => SyncType::Dry,
-                SubCommand::Sync => SyncType::Real,
-            },
-        )
-        .await?
+    for team_name in args.teams {
+        let team = team_lookup.get(&team_name.to_lowercase());
+        match team {
+            Some(team) => {
+                sync(
+                    team,
+                    &creds,
+                    spond::GroupId::new("12BC6CAB8503463C8845B14A6CBC8D4A"),
+                    match args.cmd {
+                        SubCommand::Diff => SyncType::Dry,
+                        SubCommand::Sync => SyncType::Real,
+                    },
+                )
+                .await?
+            }
+            None => {
+                println!("Unknown team name: {}", team_name);
+            }
+        }
     }
     Ok(())
 }

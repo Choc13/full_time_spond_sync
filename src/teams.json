@@ -1,0 +1,48 @@
+{
+    "teams": [
+        {
+            "name": "Jedis",
+            "full_time": {
+                "name": "Twyford Comets FC U9 Jedis",
+                "id": 994929228,
+                "season_id": 345055822
+            },
+            "spond": {
+                "sub_group_id": "CBED8EAA90DF4A40AA677F26CF070DAA"
+            }
+        },
+        {
+            "name": "Mandos",
+            "full_time": {
+                "name": "Twyford Comets FC U9 Mandalorians",
+                "id": 14943433,
+                "season_id": 258565849
+            },
+            "spond": {
+                "sub_group_id": "5F88515880184BF980CE587A17AA3E1C"
+            }
+        },
+        {
+            "name": "Rebels",
+            "full_time": {
+                "name": "Twyford Comets FC U9 Rebels",
+                "id": 22659086,
+                "season_id": 285551258
+            },
+            "spond": {
+                "sub_group_id": "4B09D34C9A9841D4A05B950511A68E62"
+            }
+        },
+        {
+            "name": "Stormtroopers",
+            "full_time": {
+                "name": "Twyford Comets FC U9 Stormtroopers",
+                "id": 372755773,
+                "season_id": 676322691
+            },
+            "spond": {
+                "sub_group_id": "E5D605768156447E862502FCFF25F9AA"
+            }
+        }
+    ]
+}
