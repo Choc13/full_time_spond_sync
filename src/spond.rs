@@ -271,12 +271,14 @@ impl Location {
     const GOALS_NAME: &str = "Goals Reading";
     const KINGS_ACADEMY_NAME: &str = "King’s Academy Prospect";
     const WOODFORD_PARK_NAME: &str = "Woodford Park - 3G";
+    const CINTRA_PARK_NAME: &str = "Cintra Park";
 
     pub fn to_full_time_venue(&self) -> full_time::Venue {
         match self.feature.as_str() {
             Self::GOALS_NAME => full_time::Venue::Goals,
             Self::KINGS_ACADEMY_NAME => full_time::Venue::KingsAcademy,
             Self::WOODFORD_PARK_NAME => full_time::Venue::WoodfordPark,
+            Self::CINTRA_PARK_NAME => full_time::Venue::CintraPark,
             _ => panic!("Unknown location '{}'", self.feature),
         }
     }
@@ -310,11 +312,21 @@ impl Location {
         }
     }
 
+    pub fn cintra_park() -> Self {
+        Self {
+            feature: Location::CINTRA_PARK_NAME.to_owned(),
+            address: "Cintra Park, Reading, RG2 7ES".to_owned(),
+            latitude: rust_decimal_macros::dec!(51.442006),
+            longitude: rust_decimal_macros::dec!(-0.958364),
+        }
+    }
+
     pub fn from_full_time_venue(venue: full_time::Venue) -> Self {
         match venue {
             full_time::Venue::Goals => Self::goals(),
             full_time::Venue::KingsAcademy => Self::kings_academy(),
             full_time::Venue::WoodfordPark => Self::woodford_park(),
+            full_time::Venue::CintraPark => Self::cintra_park(),
         }
     }
 }
