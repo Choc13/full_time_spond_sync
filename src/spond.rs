@@ -270,14 +270,16 @@ pub struct Location {
 impl Location {
     const GOALS_NAME: &str = "Goals Reading";
     const KINGS_ACADEMY_NAME: &str = "King’s Academy Prospect";
-    const WOODFORD_PARK_NAME: &str = "Woodford Park - 3G";
+    const WOODFORD_PARK_3G_NAME: &str = "Woodford Park - 3G";
+    const WOODFORD_PARK_GRASS_NAME: &str = "Woodford Park - Grass";
     const CINTRA_PARK_NAME: &str = "Cintra Park";
 
     pub fn to_full_time_venue(&self) -> full_time::Venue {
         match self.feature.as_str() {
             Self::GOALS_NAME => full_time::Venue::Goals,
             Self::KINGS_ACADEMY_NAME => full_time::Venue::KingsAcademy,
-            Self::WOODFORD_PARK_NAME => full_time::Venue::WoodfordPark,
+            Self::WOODFORD_PARK_3G_NAME => full_time::Venue::WoodfordPark3G,
+            Self::WOODFORD_PARK_GRASS_NAME => full_time::Venue::WoodfordParkGrass,
             Self::CINTRA_PARK_NAME => full_time::Venue::CintraPark,
             _ => panic!("Unknown location '{}'", self.feature),
         }
@@ -302,9 +304,19 @@ impl Location {
         }
     }
 
-    pub fn woodford_park() -> Self {
+    pub fn woodford_park_3g() -> Self {
         Self {
-            feature: Location::WOODFORD_PARK_NAME.to_owned(),
+            feature: Location::WOODFORD_PARK_3G_NAME.to_owned(),
+            address: "Woodford Park Leisure Centre, Haddon Dr, Woodley, Reading, RG5 4LY"
+                .to_owned(),
+            latitude: rust_decimal_macros::dec!(51.457008),
+            longitude: rust_decimal_macros::dec!(-0.9058048),
+        }
+    }
+
+    pub fn woodford_park_grass() -> Self {
+        Self {
+            feature: Location::WOODFORD_PARK_GRASS_NAME.to_owned(),
             address: "Woodford Park Leisure Centre, Haddon Dr, Woodley, Reading, RG5 4LY"
                 .to_owned(),
             latitude: rust_decimal_macros::dec!(51.457008),
@@ -325,7 +337,8 @@ impl Location {
         match venue {
             full_time::Venue::Goals => Self::goals(),
             full_time::Venue::KingsAcademy => Self::kings_academy(),
-            full_time::Venue::WoodfordPark => Self::woodford_park(),
+            full_time::Venue::WoodfordPark3G => Self::woodford_park_3g(),
+            full_time::Venue::WoodfordParkGrass => Self::woodford_park_grass(),
             full_time::Venue::CintraPark => Self::cintra_park(),
         }
     }

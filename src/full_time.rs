@@ -68,7 +68,8 @@ pub enum FixtureSide {
 pub enum Venue {
     Goals,
     KingsAcademy,
-    WoodfordPark,
+    WoodfordPark3G,
+    WoodfordParkGrass,
     CintraPark,
 }
 
@@ -145,7 +146,13 @@ fn parse_venue(cell: &ElementRef) -> Venue {
     if venue_name.contains("goals") {
         Venue::Goals
     } else if venue_name.contains("woodford") {
-        Venue::WoodfordPark
+        if venue_name.contains("grass") {
+            Venue::WoodfordParkGrass
+        } else if venue_name.contains("3g") {
+            Venue::WoodfordPark3G
+        } else {
+            panic!("Unknown Woodford venue type {}", venue_name)
+        }
     } else if venue_name.contains("kings academy") {
         Venue::KingsAcademy
     } else if venue_name.contains("cintra park") {
