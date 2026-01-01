@@ -71,6 +71,7 @@ pub enum Venue {
     WoodfordPark3G,
     WoodfordParkGrass,
     CintraPark,
+    NorthStreetTheale,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -157,6 +158,8 @@ fn parse_venue(cell: &ElementRef) -> Venue {
         Venue::KingsAcademy
     } else if venue_name.contains("cintra park") {
         Venue::CintraPark
+    } else if venue_name.contains("north street theale") {
+        Venue::NorthStreetTheale
     } else {
         panic!("Unknown venue {}", venue_name)
     }

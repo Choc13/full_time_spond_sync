@@ -273,6 +273,7 @@ impl Location {
     const WOODFORD_PARK_3G_NAME: &str = "Woodford Park - 3G";
     const WOODFORD_PARK_GRASS_NAME: &str = "Woodford Park - Grass";
     const CINTRA_PARK_NAME: &str = "Cintra Park";
+    const NORTH_STREET_THEALE: &str = "North Street Theale";
 
     pub fn to_full_time_venue(&self) -> full_time::Venue {
         match self.feature.as_str() {
@@ -333,6 +334,15 @@ impl Location {
         }
     }
 
+    pub fn north_street_theale() -> Self {
+        Self {
+            feature: Location::NORTH_STREET_THEALE.to_owned(),
+            address: "Englefield Rd, Theale, Reading RG7 5AS".to_owned(),
+            latitude: rust_decimal_macros::dec!(51.438580113890666),
+            longitude: rust_decimal_macros::dec!(-1.0837532493059963),
+        }
+    }
+
     pub fn from_full_time_venue(venue: full_time::Venue) -> Self {
         match venue {
             full_time::Venue::Goals => Self::goals(),
@@ -340,6 +350,7 @@ impl Location {
             full_time::Venue::WoodfordPark3G => Self::woodford_park_3g(),
             full_time::Venue::WoodfordParkGrass => Self::woodford_park_grass(),
             full_time::Venue::CintraPark => Self::cintra_park(),
+            full_time::Venue::NorthStreetTheale => Self::north_street_theale(),
         }
     }
 }
