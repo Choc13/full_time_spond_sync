@@ -34,6 +34,17 @@
             }
         },
         {
+            "name": "Rogues",
+            "full_time": {
+                "name": "Twyford Comets FC U9 Rogues",
+                "id": 296013917,
+                "season_id": 560424613
+            },
+            "spond": {
+                "sub_group_id": "E3D49956464F4BB78EB04B9DAD28D5A3"
+            }
+        },
+        {
             "name": "Stormtroopers",
             "full_time": {
                 "name": "Twyford Comets FC U9 Stormtroopers",
