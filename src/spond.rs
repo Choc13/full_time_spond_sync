@@ -282,6 +282,7 @@ impl Location {
             Self::WOODFORD_PARK_3G_NAME => full_time::Venue::WoodfordPark3G,
             Self::WOODFORD_PARK_GRASS_NAME => full_time::Venue::WoodfordParkGrass,
             Self::CINTRA_PARK_NAME => full_time::Venue::CintraPark,
+            Self::NORTH_STREET_THEALE => full_time::Venue::NorthStreetTheale,
             _ => panic!("Unknown location '{}'", self.feature),
         }
     }
