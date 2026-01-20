@@ -176,6 +176,11 @@ impl Diff {
             .collect::<HashMap<_, _>>();
         let sponds = sponds
             .into_iter()
+            .filter(|s| {
+                !s.match_info
+                    .as_ref()
+                    .is_some_and(|m| m.opponent_name == "BYFL Summer Tournament".to_owned())
+            })
             .map(|s| (s.start_timestamp.with_timezone(&London).date_naive(), s))
             .collect::<HashMap<_, _>>();
         Self {
