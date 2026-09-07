@@ -1,58 +1,47 @@
 {
     "teams": [
         {
-            "name": "Jedis",
+            "name": "Meteors",
             "full_time": {
-                "name": "Twyford Comets FC U9 Jedis",
-                "id": 994929228,
-                "season_id": 345055822
-            },
-            "spond": {
-                "sub_group_id": "CBED8EAA90DF4A40AA677F26CF070DAA"
-            }
-        },
-        {
-            "name": "Mandos",
-            "full_time": {
-                "name": "Twyford Comets FC U9 Mandalorians",
+                "name": "Twyford Comets FC U10 Meteors",
                 "id": 14943433,
-                "season_id": 258565849
+                "season_id": 360056245
             },
             "spond": {
-                "sub_group_id": "5F88515880184BF980CE587A17AA3E1C"
+                "sub_group_id": "DE668CD5E2874197A1C4CD8EE0CB9B76"
             }
         },
         {
-            "name": "Rebels",
+            "name": "Rockets",
             "full_time": {
-                "name": "Twyford Comets FC U9 Rebels",
+                "name": "Twyford Comets FC U10 Rockets",
                 "id": 22659086,
-                "season_id": 285551258
+                "season_id": 368068683
             },
             "spond": {
-                "sub_group_id": "4B09D34C9A9841D4A05B950511A68E62"
+                "sub_group_id": "DCCCAFD527A847368D09BE5986DEC15F"
             }
         },
         {
-            "name": "Rogues",
+            "name": "Astros",
             "full_time": {
-                "name": "Twyford Comets FC U9 Rogues",
-                "id": 296013917,
-                "season_id": 653639246
-            },
-            "spond": {
-                "sub_group_id": "E3D49956464F4BB78EB04B9DAD28D5A3"
-            }
-        },
-        {
-            "name": "Stormtroopers",
-            "full_time": {
-                "name": "Twyford Comets FC U9 Stormtroopers",
+                "name": "Twyford Comets FC U10 Astros",
                 "id": 372755773,
-                "season_id": 676322691
+                "season_id": 69399666
             },
             "spond": {
-                "sub_group_id": "E5D605768156447E862502FCFF25F9AA"
+                "sub_group_id": "77CB6CB2D3C340B6B2E755B676A4AF15"
+            }
+        },
+        {
+            "name": "Galaxy",
+            "full_time": {
+                "name": "Twyford Comets FC U10 Galaxy",
+                "id": 169375196,
+                "season_id": 65122125
+            },
+            "spond": {
+                "sub_group_id": "4A4219D67D8844C2B21BBE836E9F9F52"
             }
         }
     ]

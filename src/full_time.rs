@@ -165,18 +165,21 @@ fn parse_venue(cell: &ElementRef) -> Venue {
     }
 }
 
-fn parse_fixture<'a>(row: impl Iterator<Item = ElementRef<'a>>, team_name: &TeamName) -> Fixture {
+fn parse_fixture<'a>(
+    row: impl Iterator<Item = ElementRef<'a>>,
+    team_name: &TeamName,
+) -> Option<Fixture> {
     let row = row.collect::<Vec<_>>();
     match &row[..] {
         [typ, date_time, home_team, _, _, _, away_team, venue] => {
             let (fixture_side, opposition) = parse_teams(home_team, away_team, team_name);
-            Fixture {
+            Some(Fixture {
                 typ: parse_fixture_type(typ),
                 side: fixture_side,
                 date_time: parse_fixture_time(date_time),
                 opposition,
                 venue: parse_venue(venue),
-            }
+            })
         }
         _ => panic!("Incorrect number of cells in table row."),
     }
@@ -190,13 +193,25 @@ pub async fn get_upcoming_fixtures(
         "https://fulltime.thefa.com/displayTeam.html?divisionseason={}&teamID={}",
         *season_id, *team.id
     );
-    let html = reqwest::get(url).await?.text().await?;
+    let html = wreq::Client::builder()
+        .emulation(wreq_util::Emulation::Chrome131)
+        .build()
+        .unwrap()
+        .get(&url)
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
     let document = Html::parse_document(&html);
     let tables = document
         .select(&Selector::parse("div.fixtures-table table").unwrap())
         .collect::<Vec<_>>();
     let table = match tables[..] {
-        [] => return Ok(vec![]),
+        [] => {
+            return Ok(vec![]);
+        }
         [t] => t,
         _ => panic!(
             "Expected to find one fixture table, but found {}.",
@@ -207,7 +222,11 @@ pub async fn get_upcoming_fixtures(
     Ok(table
         .select(&Selector::parse("tbody tr").unwrap())
         .map(|tr| tr.select(&td_selector))
-        .map(|r| parse_fixture(r, &team.name))
+        .filter_map(|r| parse_fixture(r, &team.name))
         .filter(|f| f.date_time.with_timezone(&Utc) >= Utc::now())
+        .filter(|f| {
+            !(f.opposition == "Caversham Trents U9 Whites"
+                && f.date_time.date_naive() == NaiveDate::from_ymd_opt(2026, 3, 7).unwrap())
+        })
         .collect::<Vec<_>>())
 }

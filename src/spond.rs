@@ -11,16 +11,21 @@ pub struct UserCredentials {
 }
 
 #[derive(Debug, Deserialize)]
+struct AuthToken {
+    token: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct UserSession {
-    #[serde(rename = "loginToken")]
-    login_token: String,
+    #[serde(rename = "accessToken")]
+    access_token: AuthToken,
     #[serde(rename = "passwordToken")]
-    password_token: String,
+    password_token: AuthToken,
 }
 
 pub async fn login(credentials: &UserCredentials) -> reqwest::Result<UserSession> {
     let response = reqwest::Client::new()
-        .post("https://api.spond.com/core/v1/login")
+        .post("https://api.spond.com/core/v1/auth2/login")
         .json(credentials)
         .send()
         .await?;
@@ -198,7 +203,7 @@ pub async fn get_group(group_id: &GroupId, session: &UserSession) -> reqwest::Re
             "https://api.spond.com/core/v1/group/{}",
             group_id.0
         ))
-        .bearer_auth(session.login_token.clone())
+        .bearer_auth(session.access_token.token.clone())
         .send()
         .await?;
     match response.error_for_status() {
@@ -473,7 +478,7 @@ async fn get_sponds(
             .filter_map(|x| x.clone())
             .collect::<Vec<_>>(),
         )
-        .bearer_auth(session.login_token.clone())
+        .bearer_auth(session.access_token.token.clone())
         .send()
         .await?;
     match response.error_for_status() {
@@ -568,7 +573,7 @@ pub async fn create_spond(
     let response = reqwest::Client::new()
         .post("https://api.spond.com/core/v1/sponds")
         .json(&request)
-        .bearer_auth(session.login_token.clone())
+        .bearer_auth(session.access_token.token.clone())
         .send()
         .await?;
     match response.error_for_status() {
@@ -584,7 +589,7 @@ pub async fn update_spond(spond: Spond, session: &UserSession) -> reqwest::Resul
             spond.id.0
         ))
         .json(&spond)
-        .bearer_auth(session.login_token.clone())
+        .bearer_auth(session.access_token.token.clone())
         .send()
         .await?;
     match response.error_for_status() {
@@ -597,7 +602,7 @@ pub async fn delete_spond(id: &SpondId, session: &UserSession) -> reqwest::Resul
     let response = reqwest::Client::new()
         .delete(format!("https://api.spond.com/core/v1/sponds/{}", id.0))
         .query(&[("quiet", "true")])
-        .bearer_auth(session.login_token.clone())
+        .bearer_auth(session.access_token.token.clone())
         .send()
         .await?;
     match response.error_for_status() {
@@ -611,7 +616,7 @@ pub async fn get_upcoming_matches(
     sub_group_id: &SubGroupId,
     session: &UserSession,
 ) -> Result<Vec<Spond>, String> {
-    get_sponds(
+    Ok(get_sponds(
         GetSpondsRequest {
             add_profile_info: false,
             exclude_availability: true,
@@ -630,5 +635,16 @@ pub async fn get_upcoming_matches(
         &session,
     )
     .await
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?
+    .into_iter()
+    .filter(|s| {
+        !s.match_info.as_ref().is_some_and(|m| {
+            m.opponent_name == "BYFL Summer Tournament".to_owned()
+                || m.opponent_name.trim() == "Binfield Tournament".to_owned()
+                || m.opponent_name.trim() == "Wargrave Tournament".to_owned()
+                || m.opponent_name.trim() == "Tilehurst Panthers T".to_owned()
+                || m.opponent_name.trim() == "Cold Ash Tourny".to_owned()
+        })
+    })
+    .collect())
 }
