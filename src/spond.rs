@@ -112,6 +112,7 @@ pub enum Permission {
     FundRaisers,
     #[serde(rename = "coaches-corner")]
     CoachesCorner,
+    Contacts,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]

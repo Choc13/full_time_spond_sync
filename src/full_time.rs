@@ -193,17 +193,16 @@ pub async fn get_upcoming_fixtures(
         "https://fulltime.thefa.com/displayTeam.html?divisionseason={}&teamID={}",
         *season_id, *team.id
     );
-    let html = wreq::Client::builder()
-        .emulation(wreq_util::Emulation::Chrome131)
-        .build()
-        .unwrap()
-        .get(&url)
-        .send()
+    let output = tokio::process::Command::new("python3")
+        .args([
+            "-c",
+            "from curl_cffi import requests; import sys; print(requests.get(sys.argv[1], impersonate='chrome131').text)",
+            &url,
+        ])
+        .output()
         .await
-        .unwrap()
-        .text()
-        .await
-        .unwrap();
+        .expect("python3 not found — run: pip install curl_cffi");
+    let html = String::from_utf8_lossy(&output.stdout).into_owned();
     let document = Html::parse_document(&html);
     let tables = document
         .select(&Selector::parse("div.fixtures-table table").unwrap())
