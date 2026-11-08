@@ -2,7 +2,7 @@ name: Scriptable app
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths: ["scriptable/**", "src/teams.json", ".github/workflows/scriptable.yml"]
   pull_request:
     paths: ["scriptable/**", "src/teams.json", ".github/workflows/scriptable.yml"]
@@ -34,8 +34,8 @@ jobs:
           path: scriptable/dist/FA-Spond-Sync.scriptable
 
   publish:
-    # Only main is published, so people installing from the link never get an unreviewed build.
-    if: github.ref == 'refs/heads/main'
+    # Only master is published, so people installing from the link never get an unreviewed build.
+    if: github.ref == 'refs/heads/master'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 5

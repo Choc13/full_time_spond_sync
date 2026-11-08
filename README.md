@@ -36,7 +36,7 @@ To add a shortcut, open the script's settings in Scriptable and choose **Add to 
 
 ### Adding a team
 
-Add it to `src/teams.json`, which the CLI and the app share. A new venue also needs adding to `scriptable/src/domain/venues.ts` and `parseVenue` in `scriptable/src/domain/fullTime.ts`. Merging to `main` publishes a new build to the download link.
+Add it to `src/teams.json`, which the CLI and the app share. A new venue also needs adding to `scriptable/src/domain/venues.ts` and `parseVenue` in `scriptable/src/domain/fullTime.ts`. Merging to `master` publishes a new build to the download link.
 
 ### Developing
 
