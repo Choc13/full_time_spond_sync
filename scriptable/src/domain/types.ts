@@ -1,32 +1,37 @@
 /** Milliseconds since the epoch. */
 export type Instant = number;
 
-export type VenueKey = "goals" | "kingsAcademy" | "woodfordPark3G" | "woodfordParkGrass" | "cintraPark" | "northStreetTheale";
 export type FixtureType = "cup" | "league";
 export type FixtureSide = "home" | "away";
 
+/** A fixture as Full-Time lists it, from one team's point of view. */
 export interface Fixture {
   type: FixtureType;
   side: FixtureSide;
   at: Instant;
   opposition: string;
-  venue: VenueKey;
+  /** The venue exactly as Full-Time names it. */
+  venue: string;
 }
 
-export interface Team {
-  name: string;
-  fullTimeName: string;
-  teamId: number;
-  seasonId: number;
-  subGroupId: string;
+/** A fixture whose venue has been matched to a Spond location. */
+export interface PlacedFixture extends Fixture {
+  location: Location;
 }
 
-/** Coordinates are strings because that is how the Rust client sends them. */
 export interface Location {
   feature: string;
   address: string;
   latitude: string | number;
   longitude: string | number;
+}
+
+/** One team being synced: its Full-Time listing and its Spond sub-group. */
+export interface Team {
+  label: string;
+  fullTimeId: number;
+  fullTimeName: string;
+  subGroupId: string;
 }
 
 export type MatchType = "HOME" | "AWAY" | "TOURNAMENT";
@@ -71,28 +76,38 @@ export interface GroupMember {
   roles?: string[] | null;
 }
 
+export interface SubGroup {
+  id: string;
+  name: string;
+}
+
 export interface Group {
   id: string;
+  name?: string;
   members: GroupMember[];
-  subGroups: { id: string; name: string }[];
+  subGroups: SubGroup[];
   roles: { id: string; name: string }[];
 }
 
-/** One row of the Full-Time fixtures table, as text. */
-export interface PageRow {
+/** One row of the Full-Time club fixtures table, as text. */
+export interface ClubPageRow {
   cellCount: number;
+  text: string;
   type: string;
   dateSpans: string[];
-  home: string[];
-  away: string[];
+  home: string;
+  away: string;
   venue: string;
 }
 
-export interface FixturesPage {
+/** What the adapter reads from the Full-Time club fixtures page. */
+export interface ClubPage {
   status: number;
+  /** The page's team filter: every club team in the age group. */
+  teams: { id: number; name: string }[];
+  ageGroup: string;
   tableCount: number;
-  rows: PageRow[];
-  teamNameFound: boolean;
+  rows: ClubPageRow[];
 }
 
 export interface Plan {
@@ -100,8 +115,8 @@ export interface Plan {
   fixtureCount: number;
   spondCount: number;
   blocked: string | null;
-  added: Fixture[];
-  modified: { fixture: Fixture; spond: Spond }[];
+  added: PlacedFixture[];
+  modified: { fixture: PlacedFixture; spond: Spond }[];
   removed: Spond[];
 }
 

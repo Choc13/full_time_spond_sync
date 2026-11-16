@@ -1,17 +1,37 @@
-import { TEAMS } from "../config";
 import { summariseOperations } from "../domain/describe";
-import type { Operation, PreviewRow, PreviewSection, Team } from "../domain/types";
+import type { Operation, PreviewRow, PreviewSection } from "../domain/types";
 
 declare const __VERSION__: string;
 
-export const chooseTeam = async (): Promise<Team | null> => {
+export const pick = async (title: string, message: string, options: string[]): Promise<number | null> => {
   const alert = new Alert();
-  alert.title = "Which team?";
-  alert.message = `FA Spond Sync ${__VERSION__}`;
-  TEAMS.forEach((team) => alert.addAction(team.name));
+  alert.title = title;
+  alert.message = title === "FA Spond Sync" ? [message, `Version ${__VERSION__}`].filter(Boolean).join("\n\n") : message;
+  options.forEach((option) => alert.addAction(option));
   alert.addCancelAction("Cancel");
   const choice = await alert.presentSheet();
-  return choice === -1 ? null : TEAMS[choice];
+  return choice === -1 ? null : choice;
+};
+
+export const askText = async (title: string, message: string, initial = ""): Promise<string | null> => {
+  const alert = new Alert();
+  alert.title = title;
+  alert.message = message;
+  alert.addTextField("", initial);
+  alert.addAction("OK");
+  alert.addCancelAction("Cancel");
+  if ((await alert.presentAlert()) === -1) return null;
+  return alert.textFieldValue(0);
+};
+
+export const confirm = async (title: string, message: string, action: string, destructive: boolean): Promise<boolean> => {
+  const alert = new Alert();
+  alert.title = title;
+  alert.message = message;
+  if (destructive) alert.addDestructiveAction(action);
+  else alert.addAction(action);
+  alert.addCancelAction("Cancel");
+  return (await alert.presentAlert()) === 0;
 };
 
 export const showMessage = async (title: string, message: string): Promise<void> => {
@@ -63,14 +83,4 @@ export const showPreview = async (sections: PreviewSection[], operations: Operat
   });
   await table.present(true);
   return approved;
-};
-
-export const confirmApply = async (operations: Operation[]): Promise<boolean> => {
-  const alert = new Alert();
-  alert.title = "Update Spond?";
-  alert.message = summariseOperations(operations);
-  if (operations.some((o) => o.kind === "delete")) alert.addDestructiveAction("Apply");
-  else alert.addAction("Apply");
-  alert.addCancelAction("Cancel");
-  return (await alert.presentAlert()) === 0;
 };

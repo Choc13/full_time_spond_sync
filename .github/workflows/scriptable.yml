@@ -3,9 +3,9 @@ name: Scriptable app
 on:
   push:
     branches: [master]
-    paths: ["scriptable/**", "src/teams.json", ".github/workflows/scriptable.yml"]
+    paths: ["scriptable/**", ".github/workflows/scriptable.yml"]
   pull_request:
-    paths: ["scriptable/**", "src/teams.json", ".github/workflows/scriptable.yml"]
+    paths: ["scriptable/**", ".github/workflows/scriptable.yml"]
   workflow_dispatch:
 
 permissions:
