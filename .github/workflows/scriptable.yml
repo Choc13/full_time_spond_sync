@@ -1,0 +1,56 @@
+name: Scriptable app
+
+on:
+  push:
+    branches: [master]
+    paths: ["scriptable/**", ".github/workflows/scriptable.yml"]
+  pull_request:
+    paths: ["scriptable/**", ".github/workflows/scriptable.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: scriptable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: scriptable/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FA-Spond-Sync
+          path: scriptable/dist/FA-Spond-Sync.scriptable
+
+  publish:
+    # Only master is published, so people installing from the link never get an unreviewed build.
+    if: github.ref == 'refs/heads/master'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: scriptable-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: FA-Spond-Sync
+      - name: Update the rolling release
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Scriptable app" --notes "Created by the Scriptable app workflow." --target "$GITHUB_SHA"
+          gh release upload "$TAG" FA-Spond-Sync.scriptable --clobber
+          gh release edit "$TAG" --notes "Built from $GITHUB_SHA."
