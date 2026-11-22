@@ -54,7 +54,7 @@ Pick an age group, then **Sync all teams** or a single team. The app reads every
 
 ### Events added by hand
 
-The sync only changes and deletes the events it made. It marks them with the line "Kept up to date from FA Full-Time by FA Spond Sync." in the event description. Any other match event, such as a summer tournament or a provisional date for a cup game, is shown as **Keep** in the preview and never deleted.
+The sync only changes and deletes the events it made. It marks them with the line "Fixture details from FA Full-Time." in the event description. Any other match event, such as a summer tournament or a provisional date for a cup game, is shown as **Keep** in the preview and never deleted.
 
 When Full-Time publishes a fixture on the same date as an event added by hand, the sync takes that event over: it updates the time, opponent and venue, gives it the usual heading, adds the marker and keeps everyone's replies. So a provisional cup date becomes the real fixture. To stop the sync touching an event it made, delete the marker line from its description in Spond.
 

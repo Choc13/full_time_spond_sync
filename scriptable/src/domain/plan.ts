@@ -48,7 +48,7 @@ const inDateOrder = <T>(map: Map<string, T>): [string, T][] => [...map.entries()
 // The sync only owns the events it created, which it marks with this line in the description.
 // Coaches can add other events by hand, such as tournaments or provisional cup dates, and the sync
 // never deletes them. Removing the line from an event hands it back to the coaches.
-export const SYNC_MARKER = "Kept up to date from FA Full-Time by FA Spond Sync.";
+export const SYNC_MARKER = "Fixture details from FA Full-Time.";
 
 export const isSynced = (spond: Spond): boolean => (spond.description ?? "").includes(SYNC_MARKER);
 
