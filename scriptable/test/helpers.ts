@@ -1,14 +1,25 @@
 import { JSDOM } from "jsdom";
 import { extractClubPage } from "../src/adapters/clubPage";
 import type { Setup } from "../src/domain/settings";
+import { SYNC_MARKER, withSyncMarker } from "../src/domain/plan";
 import type { ClubPage, Group, Location, Spond, Team } from "../src/domain/types";
+import rustOutput from "./golden/rust-output.json";
 import scenario from "./golden/scenario.json";
 import venues from "./golden/venues.json";
 
 export const NOW = Date.UTC(2026, 10, 2);
 export const TEAM_ID = 14943433;
 export const group = scenario.group as unknown as Group;
-export const sponds = scenario.sponds as unknown as Spond[];
+/** The scenario's events as they were before the sync marked its own events. */
+export const unmarkedSponds = scenario.sponds as unknown as Spond[];
+/** The scenario's events, all made by the sync. */
+export const sponds: Spond[] = unmarkedSponds.map((s) => ({ ...s, description: withSyncMarker(s.description) }));
+/** What the Rust client sent for the scenario, plus the marker this app adds to its own events. */
+export const expected = {
+  creates: rustOutput.creates.map((c) => ({ ...c, description: SYNC_MARKER })),
+  updates: rustOutput.updates.map((u) => ({ ...u, description: withSyncMarker(u.description) })),
+  removed: rustOutput.removed,
+};
 export const team: Team = { label: "Meteors", fullTimeId: TEAM_ID, fullTimeName: scenario.team_name, subGroupId: scenario.sub_group_id };
 
 export const setup: Setup = {

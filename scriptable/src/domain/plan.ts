@@ -45,30 +45,55 @@ const byLondonDate = <T>(items: T[], instantOf: (item: T) => Instant): Map<strin
 
 const inDateOrder = <T>(map: Map<string, T>): [string, T][] => [...map.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
 
-export const diff = (fixtures: PlacedFixture[], sponds: Spond[]): Pick<Plan, "added" | "modified" | "removed"> => {
-  const sortedSponds = [...sponds].sort((a, b) => Date.parse(a.startTimestamp) - Date.parse(b.startTimestamp));
+// The sync only owns the events it created, which it marks with this line in the description.
+// Coaches can add other events by hand, such as tournaments or provisional cup dates, and the sync
+// never deletes them. Removing the line from an event hands it back to the coaches.
+export const SYNC_MARKER = "Kept up to date from FA Full-Time by FA Spond Sync.";
+
+export const isSynced = (spond: Spond): boolean => (spond.description ?? "").includes(SYNC_MARKER);
+
+export const withSyncMarker = (description: string | null | undefined): string => {
+  const text = (description ?? "").trim();
+  return text.includes(SYNC_MARKER) ? text : text ? `${text}\n\n${SYNC_MARKER}` : SYNC_MARKER;
+};
+
+const byStart = (a: Spond, b: Spond): number => Date.parse(a.startTimestamp) - Date.parse(b.startTimestamp);
+
+/**
+ * Fixtures and Sponds are matched by London calendar date. A fixture is matched to the synced event
+ * on its date or, failing that, to an event added by hand on that date, which the sync then takes
+ * over: a provisional hold becomes the real fixture, and events made before the marker existed
+ * get marked. Only synced events are ever deleted; other events are kept.
+ */
+export const diff = (fixtures: PlacedFixture[], sponds: Spond[]): Pick<Plan, "added" | "modified" | "removed" | "kept"> => {
   const fixtureByDate = byLondonDate(fixtures, (f) => f.at);
-  const spondByDate = byLondonDate(sortedSponds, (s) => Date.parse(s.startTimestamp));
+  const syncedByDate = byLondonDate(sponds.filter(isSynced).sort(byStart), (s) => Date.parse(s.startTimestamp));
+  const byHandByDate = byLondonDate(sponds.filter((s) => !isSynced(s)).sort(byStart), (s) => Date.parse(s.startTimestamp));
+  const matchFor = (date: string): Spond | undefined => syncedByDate.get(date) ?? byHandByDate.get(date);
   return {
-    added: inDateOrder(fixtureByDate).filter(([date]) => !spondByDate.has(date)).map(([, f]) => f),
+    added: inDateOrder(fixtureByDate).filter(([date]) => !matchFor(date)).map(([, f]) => f),
     modified: inDateOrder(fixtureByDate)
       .flatMap(([date, fixture]) => {
-        const spond = spondByDate.get(date);
+        const spond = matchFor(date);
         return spond ? [{ fixture, spond }] : [];
       })
-      .filter(({ fixture, spond }) => !(sameFixture(spondToFixture(spond), fixture) && meetupPrior(fixture) === (spond.meetupPrior ?? null))),
-    removed: inDateOrder(spondByDate).filter(([date]) => !fixtureByDate.has(date)).map(([, s]) => s),
+      .filter(({ fixture, spond }) => !isSynced(spond) || !(sameFixture(spondToFixture(spond), fixture) && meetupPrior(fixture) === (spond.meetupPrior ?? null))),
+    removed: inDateOrder(syncedByDate).filter(([date]) => !fixtureByDate.has(date)).map(([, s]) => s),
+    kept: inDateOrder(byHandByDate).filter(([date]) => !fixtureByDate.has(date) || syncedByDate.has(date)).map(([, s]) => s),
   };
 };
 
-/** No fixtures at all while Spond has upcoming ones is never applied automatically. */
-export const planForTeam = (team: Team, fixtures: PlacedFixture[], sponds: Spond[]): Plan => ({
-  team,
-  fixtureCount: fixtures.length,
-  spondCount: sponds.length,
-  blocked: fixtures.length === 0 && sponds.length > 0 ? `Full-Time shows no upcoming fixtures but Spond has ${sponds.length}. Nothing will be changed for ${team.label}.` : null,
-  ...diff(fixtures, sponds),
-});
+/** No fixtures at all while Spond has upcoming synced events is never applied automatically. */
+export const planForTeam = (team: Team, fixtures: PlacedFixture[], sponds: Spond[]): Plan => {
+  const synced = sponds.filter(isSynced).length;
+  return {
+    team,
+    fixtureCount: fixtures.length,
+    spondCount: sponds.length,
+    blocked: fixtures.length === 0 && synced > 0 ? `Full-Time shows no upcoming fixtures but Spond has ${synced} synced events. Nothing will be changed for ${team.label}.` : null,
+    ...diff(fixtures, sponds),
+  };
+};
 
 export const isIgnored = (spond: Spond, ignoredOpponents: string[]): boolean =>
   Boolean(spond.matchInfo) && ignoredOpponents.some((name) => name.trim().toLowerCase() === (spond.matchInfo as MatchInfo).opponentName.trim().toLowerCase());
@@ -95,19 +120,22 @@ const findSubGroup = (group: Group, subGroupId: string) => {
   return subGroup;
 };
 
+const standardHeading = (teamName: string, fixture: Fixture): string => `${teamName} - ${fixture.opposition}`;
+
 export const createRequest = (fixture: PlacedFixture, group: Group, subGroupId: string) => {
   const subGroup = findSubGroup(group, subGroupId);
   const coachRole = group.roles.find((r) => r.name.toLowerCase() === "coach");
   if (!coachRole) throw new Error('Spond group has no "coach" role');
   const members = group.members.filter((m) => m.subGroups.includes(subGroupId));
   return {
-    heading: `${subGroup.name} - ${fixture.opposition}`,
+    heading: standardHeading(subGroup.name, fixture),
     spondType: "event",
     startTimestamp: formatInstant(fixture.at),
     endTimestamp: formatInstant(fixture.at + HOUR),
     openEnded: false,
     commentsDisabled: false,
     meetupPrior: meetupPrior(fixture),
+    description: SYNC_MARKER,
     maxAccepted: 0,
     rsvpDate: null,
     location: fixture.location,
@@ -126,12 +154,13 @@ export const createRequest = (fixture: PlacedFixture, group: Group, subGroupId: 
   };
 };
 
+/** Taking over an event added by hand also gives it the standard heading, replacing e.g. "Cup TBC". */
 export const updateRequest = (spond: Spond, fixture: PlacedFixture, group: Group, subGroupId: string) => ({
   id: spond.id,
   creatorId: spond.creatorId,
   owners: spond.owners.map((o) => ({ id: o.id, response: o.response })),
-  heading: spond.heading,
-  description: spond.description ?? null,
+  heading: isSynced(spond) ? spond.heading : standardHeading(findSubGroup(group, subGroupId).name, fixture),
+  description: withSyncMarker(spond.description),
   startTimestamp: formatInstant(fixture.at),
   endTimestamp: formatInstant(fixture.at + HOUR),
   meetupTimestamp: spond.meetupTimestamp ?? null,

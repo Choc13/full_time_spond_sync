@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { parseClubFixtures } from "../src/domain/fullTime";
 import { londonDateKey, londonToInstant } from "../src/domain/london";
-import { createRequest, isIgnored, knownLocations, operationsFor, placeFixtures, planForTeam, unknownVenues, updateRequest } from "../src/domain/plan";
+import { describePlan } from "../src/domain/describe";
+import { createRequest, isIgnored, SYNC_MARKER, withSyncMarker, knownLocations, operationsFor, placeFixtures, planForTeam, unknownVenues, updateRequest } from "../src/domain/plan";
 import {
   addVenue, clubFixturesUrl, exportSetup, findVenue, importSetup, parseFullTimeLink, rankSubGroups, readSettings, setIgnoredOpponents, suggestSetupName, upsertSetup, writeSettings,
 } from "../src/domain/settings";
-import rustOutput from "./golden/rust-output.json";
-import { clubPageHtml, extract, group, NOW, setup, sponds, team } from "./helpers";
+import type { MatchInfo, Spond } from "../src/domain/types";
+import { clubPageHtml, expected, extract, group, NOW, setup, sponds, team, unmarkedSponds } from "./helpers";
 
 const fixturesFor = (html = clubPageHtml()) => parseClubFixtures(extract(html), [team], NOW).get(team) ?? [];
 const plan = () => planForTeam(team, placeFixtures(fixturesFor(), (v) => findVenue(setup, v)), sponds);
@@ -14,19 +15,19 @@ const json = (v: unknown) => JSON.parse(JSON.stringify(v));
 
 describe("against the Rust client", () => {
   it("sends the same create requests", () => {
-    expect(json(plan().added.map((f) => createRequest(f, group, team.subGroupId)))).toEqual(rustOutput.creates);
+    expect(json(plan().added.map((f) => createRequest(f, group, team.subGroupId)))).toEqual(expected.creates);
   });
   it("sends the same update requests", () => {
-    expect(json(plan().modified.map((m) => updateRequest(m.spond, m.fixture, group, team.subGroupId)))).toEqual(rustOutput.updates);
+    expect(json(plan().modified.map((m) => updateRequest(m.spond, m.fixture, group, team.subGroupId)))).toEqual(expected.updates);
   });
   it("deletes the same events", () => {
-    expect(plan().removed.map((s) => s.id)).toEqual(rustOutput.removed);
+    expect(plan().removed.map((s) => s.id)).toEqual(expected.removed);
   });
   it("orders operations as create, update, delete", () => {
     expect(operationsFor(plan(), group).map((o) => o.kind)).toEqual([
-      ...rustOutput.creates.map(() => "create"),
-      ...rustOutput.updates.map(() => "update"),
-      ...rustOutput.removed.map(() => "delete"),
+      ...expected.creates.map(() => "create"),
+      ...expected.updates.map(() => "update"),
+      ...expected.removed.map(() => "delete"),
     ]);
   });
 });
@@ -152,5 +153,88 @@ describe("London time", () => {
   it("rejects times that don't exist or happen twice", () => {
     expect(() => londonToInstant(2027, 3, 28, 1, 30)).toThrow();
     expect(() => londonToInstant(2027, 10, 31, 1, 30)).toThrow();
+  });
+});
+
+describe("events added by hand", () => {
+  const hold = (overrides: Partial<Spond> & { at: number; opponent: string }): Spond => {
+    const { at, opponent, ...rest } = overrides;
+    const base = sponds[0];
+    return {
+      ...base,
+      id: "HOLD",
+      heading: `Meteors - ${opponent}`,
+      description: null,
+      startTimestamp: new Date(at).toISOString(),
+      endTimestamp: new Date(at + 3600_000).toISOString(),
+      matchInfo: { ...(base.matchInfo as MatchInfo), opponentName: opponent },
+      ...rest,
+    };
+  };
+  const placed = () => placeFixtures(fixturesFor(), (v) => findVenue(setup, v));
+  const SUMMER = Date.UTC(2027, 5, 12, 9);
+
+  it("keeps an event that isn't on Full-Time", () => {
+    const tournament = hold({ at: SUMMER, opponent: "BYFL summer tournament" });
+    const p = planForTeam(team, placed(), [...sponds, tournament]);
+    expect(p.kept.map((s) => s.id)).toEqual(["HOLD"]);
+    expect(p.removed.map((s) => s.id)).toEqual(expected.removed);
+    expect(operationsFor(p, group).some((o) => "id" in o && o.id === "HOLD")).toBe(false);
+  });
+
+  it("takes over a provisional hold when Full-Time publishes a fixture on that date", () => {
+    const fixture = planForTeam(team, placed(), sponds).added[0];
+    const provisional = hold({ at: fixture.at - 2 * 3600_000, opponent: "Cup TBC", description: "Provisional cup date" });
+    const p = planForTeam(team, placed(), [...sponds, provisional]);
+    expect(p.added).not.toContainEqual(fixture);
+    expect(p.kept).toEqual([]);
+    const update = operationsFor(p, group).find((o) => o.kind === "update" && o.id === "HOLD");
+    expect(update?.body).toMatchObject({
+      heading: `Meteors - ${fixture.opposition}`,
+      description: `Provisional cup date\n\n${SYNC_MARKER}`,
+      matchInfo: { opponentName: fixture.opposition },
+    });
+  });
+
+  it("prefers the synced event when a hand-added one shares its date", () => {
+    const p0 = planForTeam(team, placed(), sponds);
+    const synced = sponds.find((s) => !expected.removed.includes(s.id)) as Spond;
+    const extra = hold({ at: Date.parse(synced.startTimestamp) + 3600_000, opponent: "Friendly" });
+    const p = planForTeam(team, placed(), [...sponds, extra]);
+    expect(p.kept.map((s) => s.id)).toEqual(["HOLD"]);
+    expect(p.modified).toEqual(p0.modified);
+  });
+
+  it("marks events made before the marker existed, and never deletes them", () => {
+    const p = planForTeam(team, placed(), unmarkedSponds);
+    const matched = unmarkedSponds.filter((s) => !expected.removed.includes(s.id)).map((s) => s.id).sort();
+    expect(p.modified.map((m) => m.spond.id).sort()).toEqual(matched);
+    expect(p.removed).toEqual([]);
+    expect(p.kept.map((s) => s.id)).toEqual(expected.removed);
+    const descriptions = operationsFor(p, group).flatMap((o) => (o.kind === "update" ? [(o.body as { description: string }).description] : []));
+    expect(descriptions).toContain(`d\n\n${SYNC_MARKER}`);
+    expect(descriptions.every((d) => d.endsWith(SYNC_MARKER))).toBe(true);
+  });
+
+  it("isn't blocked by hand-added events when Full-Time is empty", () => {
+    const tournament = hold({ at: SUMMER, opponent: "BYFL summer tournament" });
+    const p = planForTeam(team, [], [tournament]);
+    expect(p.blocked).toBeNull();
+    expect(operationsFor(p, group)).toEqual([]);
+  });
+
+  it("shows kept and taken-over events in the preview", () => {
+    const fixture = planForTeam(team, placed(), sponds).added[0];
+    const p = planForTeam(team, placed(), [...sponds, hold({ at: fixture.at, opponent: "Cup TBC" }), hold({ id: "HOLD2", at: SUMMER, opponent: "Tournament" })]);
+    const rows = describePlan(p).rows;
+    expect(rows.find((r) => r.kind === "modified" && r.subtitle.startsWith("Added by hand"))).toBeTruthy();
+    expect(rows.at(-1)).toMatchObject({ kind: "kept", subtitle: "Added by hand, so the sync leaves it alone" });
+    expect(rows.at(-1)?.title).toContain("Tournament");
+  });
+
+  it("adds the marker once", () => {
+    expect(withSyncMarker(null)).toBe(SYNC_MARKER);
+    expect(withSyncMarker("Bring shin pads")).toBe(`Bring shin pads\n\n${SYNC_MARKER}`);
+    expect(withSyncMarker(withSyncMarker("Bring shin pads"))).toBe(`Bring shin pads\n\n${SYNC_MARKER}`);
   });
 });

@@ -257,7 +257,7 @@ const setupMenu = async (ports: Ports, settings: Settings, setup: Setup): Promis
   }
   const action = options[choice];
   if (action === "Ignored events") {
-    const text = await ports.askText("Ignored events", "Spond events with these opponent names are never changed, e.g. tournaments you manage yourself. Separate names with commas.", setup.ignoredOpponents.join(", "));
+    const text = await ports.askText("Ignored events", "Spond events with these opponent names are never changed, even on a Full-Time fixture's date. Events you add by hand are already kept, so most coaches can leave this empty. Separate names with commas.", setup.ignoredOpponents.join(", "));
     if (text === null) return { settings, done: false };
     const updated = upsertSetup(settings, setIgnoredOpponents(setup, text));
     ports.saveSettings(updated);

@@ -45,7 +45,7 @@ export const showMessage = async (title: string, message: string): Promise<void>
 const lineCount = (text: string, perLine: number): number => text.split("\n").reduce((total, line) => total + Math.max(1, Math.ceil(line.length / perLine)), 0);
 
 const previewRow = (row: PreviewRow): UITableRow => {
-  const colours: Partial<Record<PreviewRow["kind"], Color>> = { added: Color.green(), modified: Color.orange(), removed: Color.red(), blocked: Color.red() };
+  const colours: Partial<Record<PreviewRow["kind"], Color>> = { added: Color.green(), modified: Color.orange(), removed: Color.red(), kept: Color.gray(), blocked: Color.red() };
   const tableRow = new UITableRow();
   const cell = tableRow.addText(row.title, row.subtitle);
   cell.titleFont = Font.semiboldSystemFont(14);

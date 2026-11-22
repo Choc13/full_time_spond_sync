@@ -118,6 +118,8 @@ export interface Plan {
   added: PlacedFixture[];
   modified: { fixture: PlacedFixture; spond: Spond }[];
   removed: Spond[];
+  /** Events added by hand that aren't on Full-Time. The sync never changes them. */
+  kept: Spond[];
 }
 
 export type Operation =
@@ -125,7 +127,7 @@ export type Operation =
   | { kind: "update"; label: string; id: string; body: object }
   | { kind: "delete"; label: string; id: string };
 
-export type RowKind = "added" | "modified" | "removed" | "blocked" | "none";
+export type RowKind = "added" | "modified" | "removed" | "kept" | "blocked" | "none";
 export interface PreviewRow {
   kind: RowKind;
   title: string;

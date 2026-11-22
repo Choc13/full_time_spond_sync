@@ -1,8 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { exportSetup, writeSettings } from "../src/domain/settings";
-import rustOutput from "./golden/rust-output.json";
-import { clubPageHtml, group, NOW, runInWebView, setup, sponds } from "./helpers";
+import { clubPageHtml, expected, group, NOW, runInWebView, setup, sponds, unmarkedSponds } from "./helpers";
 
 // Runs the built .scriptable file against fakes of Scriptable's APIs, to check the real install artefact.
 
@@ -27,6 +26,8 @@ interface Options {
   fullTimeHtml?: string;
   failWrite?: string;
   loginStatus?: number;
+  /** The team's upcoming Spond events, if not the scenario's. */
+  teamSponds?: unknown[];
 }
 
 const runBundle = async (options: Options) => {
@@ -58,7 +59,7 @@ const runBundle = async (options: Options) => {
       if (url.endsWith("/auth2/login")) return options.loginStatus ? reply(options.loginStatus, "no") : reply(200, JSON.stringify({ accessToken: { token: "TOKEN" } }));
       if (url.endsWith("/groups/")) return reply(200, JSON.stringify([{ ...group, name: "Twyford Comets" }, { id: "OTHER", name: "Other club", subGroups: [], members: [], roles: [] }]));
       if (url.endsWith(`/group/${group.id}`)) return reply(200, JSON.stringify(group));
-      if (method === "GET" && url.includes("/sponds?")) return reply(200, JSON.stringify(url.includes("subGroupId=") ? sponds : [...sponds, { ...sponds[0], id: "OLD", location: { feature: "Cintra Park", address: "Cintra Park, Reading, RG2 7ES", latitude: "51.442006", longitude: "-0.958364" } }]));
+      if (method === "GET" && url.includes("/sponds?")) return reply(200, JSON.stringify(url.includes("subGroupId=") ? (options.teamSponds ?? sponds) : [...sponds, { ...sponds[0], id: "OLD", location: { feature: "Cintra Park", address: "Cintra Park, Reading, RG2 7ES", latitude: "51.442006", longitude: "-0.958364" } }]));
       if (options.failWrite && url.endsWith(options.failWrite)) return reply(500, "boom");
       if (method === "DELETE") {
         this.response = { statusCode: 200 };
@@ -155,7 +156,7 @@ const runBundle = async (options: Options) => {
     WebView: class { async loadHTML() {} async evaluateJavaScript(code: string) { return runInWebView(code); } },
     FileManager: { local: () => fm },
     Pasteboard: { pasteString: () => clipboard, copyString: (s: string) => { clipboard = s; } },
-    Color: { green: () => 0, orange: () => 0, red: () => 0 },
+    Color: { green: () => 0, orange: () => 0, red: () => 0, gray: () => 0 },
     Font: { semiboldSystemFont: () => 0, systemFont: () => 0 },
     Script: { complete: () => { completed = true; } },
   };
@@ -192,9 +193,9 @@ describe("installable bundle", () => {
 
   it("applies exactly what the Rust client would", async () => {
     const r = await runBundle({ settings: savedSettings, answer: choose("Sync all teams (1)") });
-    expect(r.writes.filter((c) => c.url.endsWith("/sponds")).map((c) => c.body)).toEqual(rustOutput.creates);
-    expect(r.writes.filter((c) => /\/sponds\/S\d+$/.test(c.url)).map((c) => c.body)).toEqual(rustOutput.updates);
-    expect(r.writes.filter((c) => c.method === "DELETE").map((c) => c.url)).toEqual(rustOutput.removed.map((id) => `https://api.spond.com/core/v1/sponds/${id}?quiet=true`));
+    expect(r.writes.filter((c) => c.url.endsWith("/sponds")).map((c) => c.body)).toEqual(expected.creates);
+    expect(r.writes.filter((c) => /\/sponds\/S\d+$/.test(c.url)).map((c) => c.body)).toEqual(expected.updates);
+    expect(r.writes.filter((c) => c.method === "DELETE").map((c) => c.url)).toEqual(expected.removed.map((id) => `https://api.spond.com/core/v1/sponds/${id}?quiet=true`));
     expect(r.writes.every((c) => c.auth === "Bearer TOKEN")).toBe(true);
     expect(r.last?.title).toBe("Spond updated");
     expect(r.calls.filter((c) => c.url.includes("fulltime"))).toHaveLength(1);
@@ -222,7 +223,7 @@ describe("installable bundle", () => {
     });
     expect(r.dialogs.filter((d) => d.title === "Which Spond location?")).toHaveLength(1);
     expect(r.saved.setups[0].venues.find((v: { fullTimeName: string }) => v.fullTimeName === "Cintra Park").location.feature).toBe("Cintra Park");
-    expect(r.writes.filter((c) => c.url.endsWith("/sponds")).map((c) => c.body)).toEqual(rustOutput.creates);
+    expect(r.writes.filter((c) => c.url.endsWith("/sponds")).map((c) => c.body)).toEqual(expected.creates);
   });
 
   it("changes nothing if a new venue isn't matched", async () => {
@@ -285,5 +286,13 @@ describe("installable bundle", () => {
   it("never sends the password anywhere but the login", async () => {
     const r = await runBundle({ settings: savedSettings, answer: choose("Sync Meteors") });
     expect(JSON.stringify(r.calls.filter((c) => !c.url.endsWith("/auth2/login")))).not.toContain("secret");
+  });
+
+  it("leaves events added by hand alone", async () => {
+    const tournament = { ...sponds[0], id: "TOURNAMENT", heading: "Meteors - Summer tournament", description: "Entered by hand", startTimestamp: "2027-06-12T08:00:00Z", endTimestamp: "2027-06-12T15:00:00Z" };
+    const r = await runBundle({ settings: savedSettings, teamSponds: [...sponds, tournament], answer: choose("Sync all teams (1)") });
+    expect(r.writes.some((c) => c.url.includes("TOURNAMENT"))).toBe(false);
+    expect(r.writes.filter((c) => c.method === "DELETE").map((c) => c.url)).toEqual(expected.removed.map((id) => `https://api.spond.com/core/v1/sponds/${id}?quiet=true`));
+    expect(r.previewRows.at(-1)).toMatch(/^Keep: .*Delta/);
   });
 });

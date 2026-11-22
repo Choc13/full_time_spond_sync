@@ -42,7 +42,7 @@ To add a shortcut, open the script's settings in Scriptable and choose **Add to 
 
 The first sync asks which Spond location each Full-Time venue is, offering locations from your recent Spond events, and remembers the answers. If a venue has never been used in Spond, create one event there by hand first.
 
-**Ignored events** lists Spond events, such as tournaments you manage yourself, that the sync never changes.
+**Ignored events** lists opponent names whose Spond events the sync never changes, even on a Full-Time fixture's date. Most events added by hand don't need it (see below).
 
 ### Sharing a setup
 
@@ -50,7 +50,15 @@ Choose **Share this setup** to copy it, then send it to another coach. They choo
 
 ### Syncing
 
-Pick an age group, then **Sync all teams** or a single team. The app reads every team's fixtures from the club's Full-Time fixtures page, so moving teams to new divisions needs no changes. It stops without changing anything if Full-Time returns an error or block page, if the page may be cut off, or if a team has no fixtures on Full-Time but upcoming events in Spond.
+Pick an age group, then **Sync all teams** or a single team. The app reads every team's fixtures from the club's Full-Time fixtures page, so moving teams to new divisions needs no changes. It stops without changing anything if Full-Time returns an error or block page, if the page may be cut off, or if a team has no fixtures on Full-Time but upcoming synced events in Spond.
+
+### Events added by hand
+
+The sync only changes and deletes the events it made. It marks them with the line "Kept up to date from FA Full-Time by FA Spond Sync." in the event description. Any other match event, such as a summer tournament or a provisional date for a cup game, is shown as **Keep** in the preview and never deleted.
+
+When Full-Time publishes a fixture on the same date as an event added by hand, the sync takes that event over: it updates the time, opponent and venue, gives it the usual heading, adds the marker and keeps everyone's replies. So a provisional cup date becomes the real fixture. To stop the sync touching an event it made, delete the marker line from its description in Spond.
+
+The first sync after this change marks every existing event that matches a Full-Time fixture. Events from before the change that aren't on Full-Time are kept, so delete any old ones in Spond by hand.
 
 ### Developing
 
